@@ -11,3 +11,8 @@ From this, we can see that each core in my computer has its own L1 and L2 cache.
 <p align="center">
   <img src="images/getconf.png" alt="hwloc tool output" />
 </p>
+
+## Assignment #1: Read/Write Latency with Queue Length = 0
+### Cache
+
+### Main Memory
