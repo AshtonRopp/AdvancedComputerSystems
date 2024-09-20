@@ -12,6 +12,11 @@ From this, we can see that each core in my computer has its own L1 and L2 cache.
   <img src="images/getconf.png" alt="hwloc tool output" />
 </p>
 
+We can also use CPU-Z to confirm this on the Windows side.
+<p align="center">
+  <img src="images/cpu_z.png" alt="cpu_z tool output" />
+</p>
+
 ## Assignment #1: Read/Write Latency with Queue Length = 0
 ### Cache
 
