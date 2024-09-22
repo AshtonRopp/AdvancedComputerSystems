@@ -32,7 +32,7 @@ void test_write_latency_no_queue(size_t array_size, int num_tests) {
     std::chrono::duration<double, std::nano> elapsed;
     int arr_num = array_size / sizeof(int);
     for (int t = 0; t < num_tests; t++) {
-        std::vector<int> arr(array_size / sizeof(int)); // Allocate memory
+        std::vector<int> arr(arr_num); // Allocate memory
 
         auto start = std::chrono::high_resolution_clock::now();
         for (size_t i = 0; i < arr.size(); i += 64) {
