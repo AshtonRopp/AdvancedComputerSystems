@@ -4,7 +4,13 @@
 
 const int KB = 1024;
 const int MB = 1024 * KB;
-// const int cache_line_size = 64; // Cache line size for all caches
+const int cache_line_size = 64; // Cache line size for all caches
+const int cache_stride = 8*cache_line_size / sizeof(int);
+
+const size_t L1_cache_size = 4*32*KB;  // Measured L1 cache size = 6*32*KB
+const size_t L2_cache_size = 4*256*KB; // Measured L2 cache size = 6*256*KB
+const size_t L3_cache_size = 4*MB;     // Measured L3 cache size = 12*MB
+const size_t main_memory_size = 12*MB;
 
 // Function to test read latency
 void test_read_latency_no_queue(size_t array_size, int num_tests) {
@@ -15,8 +21,8 @@ void test_read_latency_no_queue(size_t array_size, int num_tests) {
         int temp = 0; // Temporary variable to ensure the read happens
 
         auto start = std::chrono::high_resolution_clock::now();
-        for (size_t i = 0; i < arr.size(); i += 64) {
-            temp += arr[i];  // Accessing every 64th element to avoid cache prefetching
+        for (size_t i = 0; i < arr.size(); i += cache_stride) {
+            temp += arr[i];  // Use stride to avoid prefetching
         }
         auto end = std::chrono::high_resolution_clock::now();
 
@@ -24,7 +30,7 @@ void test_read_latency_no_queue(size_t array_size, int num_tests) {
     }
        
     std::cout << "Average read latency for array of size " << array_size / KB << " KB: " 
-        << elapsed.count() / (num_tests * arr_num / 64) << " ns" << std::endl;
+        << elapsed.count() / (num_tests * arr_num / cache_stride) << " ns" << std::endl;
 }
 
 // Function to test write latency
@@ -35,8 +41,8 @@ void test_write_latency_no_queue(size_t array_size, int num_tests) {
         std::vector<int> arr(arr_num); // Allocate memory
 
         auto start = std::chrono::high_resolution_clock::now();
-        for (size_t i = 0; i < arr.size(); i += 64) {
-            arr[i] = i;  // Write to every 64th element to avoid cache prefetching
+        for (size_t i = 0; i < arr.size(); i += cache_stride) {
+            arr[i] = i;  // Use stride to avoid prefetching
         }
         auto end = std::chrono::high_resolution_clock::now();
 
@@ -44,16 +50,12 @@ void test_write_latency_no_queue(size_t array_size, int num_tests) {
     }
 
     std::cout << "Average write latency for array of size " << array_size / KB << " KB: " 
-        << elapsed.count() / (num_tests * arr_num / 64) << " ns" << std::endl;
+        << elapsed.count() / (num_tests * arr_num / cache_stride) << " ns" << std::endl;
 }
 
 int main() {
-    size_t L1_cache_size = 6*32*KB;  // Measured L1 cache size
-    size_t L2_cache_size = 6*256*KB; // Measured L2 cache size
-    size_t L3_cache_size = 12*MB;    // Measured L3 cache size
-    size_t main_memory_size = 20*MB; // Larger than cache (forcing main memory access)
-    int num_tests = 20;
-    std::string flushLine = "---------------------------------------------------------";
+    int num_tests = 2000;
+    std::string flushLine = "-------------------------------------------------------------";
 
     // Test with L1 cache size
     std::cout << "L1 Cache:" << std::endl <<  flushLine << std::endl;

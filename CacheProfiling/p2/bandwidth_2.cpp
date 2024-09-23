@@ -3,16 +3,14 @@
 #include <chrono>
 #include <random>
 #include <algorithm>
-#include <numeric>
 #include <thread>
-#include <mutex>
+#include <fstream>
+#include <cstdlib>
 
 const size_t BUFFER_SIZE = 1024 * 1024 * 1024; // 1 GB buffer
 const size_t BUFFER_LEN  = BUFFER_SIZE/sizeof(int);
-const int NUM_ITERATIONS = 10;
-const int NUM_THREADS = 6;
-
-std::mutex cout_mutex;
+const int NUM_ITERATIONS = 30;
+const int NUM_THREADS = 12;
 
 // Function to measure bandwidth for a single thread
 void measure_bandwidth_thread(size_t access_size, double read_ratio, size_t start, size_t end, std::chrono::duration<double>& thread_time) {
@@ -24,7 +22,7 @@ void measure_bandwidth_thread(size_t access_size, double read_ratio, size_t star
     std::uniform_int_distribution<> dis(50, 150);
     std::generate(buffer.begin(), buffer.end(), [&]() { return dis(gen); });
 
-    size_t num_accesses = access_size*8/sizeof(int);
+    size_t num_accesses = access_size/sizeof(int);
     size_t max_accesses = end - start - num_accesses;
     size_t readInd = read_ratio * buffer.size();
 
@@ -42,7 +40,7 @@ void measure_bandwidth_thread(size_t access_size, double read_ratio, size_t star
                 }
                 // Perform arbitrary write
                 else { 
-                    buffer[index] = 500;
+                    buffer[index] = 1;
                 }
             }
         }
@@ -76,23 +74,72 @@ double run_bandwidth_test(size_t access_size, double read_ratio) {
     auto average_time = total_time / NUM_THREADS;
 
     // Calculate bandwidth in GB/s
-    double total_data = static_cast<double>(BUFFER_LEN) * NUM_ITERATIONS * sizeof(int) / 8 / (1024 * 1024 * 1024);
+    double total_data = static_cast<double>(BUFFER_LEN) * NUM_ITERATIONS * sizeof(int) / (1024 * 1024 * 1024);
     return total_data / average_time.count();
 }
 
 int main() {
-    // Access size in bytes
-    std::vector<size_t> access_sizes = {64, 256, 1024, 1024*8};
-    std::vector<double> read_ratios = {1.0, 0.7, 0.5, 0.0};
+    // Access sizes in bytes
+    std::vector<size_t> access_sizes = {64, 256, 512, 1024, 2048};
+    // Read ratios
+    std::vector<double> read_ratios = {0.0, 0.5, 0.75, 1.0};
 
+    // Output data file for gnuplot
+    std::ofstream data_file("bandwidth_data.dat");
+
+    if (!data_file.is_open()) {
+        std::cerr << "Failed to open file for writing." << std::endl;
+        return 1;
+    }
+
+    // Write data in a format that gnuplot can easily use
     for (size_t access_size : access_sizes) {
-        std::cout << "Access size: " << access_size << " bytes" << std::endl;
+        data_file << "# Access size: " << access_size << " bytes" << std::endl;
         for (double read_ratio : read_ratios) {
             double bandwidth = run_bandwidth_test(access_size, read_ratio);
-            std::cout << "Read ratio: " << read_ratio * 100 << "%, Average Bandwidth: " << bandwidth << " GB/s" << std::endl;
+            // Write read_ratio and bandwidth for this access size
+            data_file << read_ratio << " " << bandwidth << std::endl;
         }
-        std::cout << std::endl;
+        data_file << "\n\n";  // Ensure double blank lines between datasets
     }
+    
+    data_file.close();
+
+    // Generate the gnuplot script
+    std::ofstream gnuplot_script("plot_bandwidth.gnuplot");
+    if (!gnuplot_script.is_open()) {
+        std::cerr << "Failed to open gnuplot script for writing." << std::endl;
+        return 1;
+    }
+
+    // Write the gnuplot commands
+    gnuplot_script << "set title 'Bandwidth vs. Read Ratio'\n";
+    gnuplot_script << "set xlabel 'Read Ratio'\n";
+    gnuplot_script << "set ylabel 'Bandwidth (GB/s)'\n";
+    gnuplot_script << "set key outside right top\n";  // Display the legend outside the graph
+    gnuplot_script << "set grid\n";
+    gnuplot_script << "set style line 1 lt 1 lc rgb '#FF0000' lw 2\n";  // Red line
+    gnuplot_script << "set style line 2 lt 1 lc rgb '#00FF00' lw 2\n";  // Green line
+    gnuplot_script << "set style line 3 lt 1 lc rgb '#0000FF' lw 2\n";  // Blue line
+    gnuplot_script << "set style line 4 lt 1 lc rgb '#FF00FF' lw 2\n";  // Magenta line
+    gnuplot_script << "set style line 5 lt 1 lc rgb '#00FFFF' lw 2\n";  // Cyan line
+    gnuplot_script << "plot \\\n";
+
+    // Plot each access size with a different line and color (style lines)
+    for (size_t i = 0; i < access_sizes.size(); ++i) {
+        gnuplot_script << "'bandwidth_data.dat' index " << i 
+                       << " using 1:2 with lines linestyle " << (i + 1) 
+                       << " title 'Access size: " << access_sizes[i] << " bytes'";
+        if (i < access_sizes.size() - 1) {
+            gnuplot_script << ", \\\n";
+        }
+    }
+    gnuplot_script << "\n";
+
+    gnuplot_script.close();
+
+    // Call gnuplot to generate the plot
+    system("gnuplot -p plot_bandwidth.gnuplot");
 
     return 0;
 }
