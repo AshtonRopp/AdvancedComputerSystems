@@ -1,5 +1,5 @@
 
-# Cache Memory Profiling
+# Cache Profiling
 
 ## Overview
 This page discusses my research into the memory system of my laptop. It reveals optimal programming practices, hardware architecture, and system performance. All experiments described here can be replicated by sourcing the `script.sh` file or running the individual commands outlined in the script.
