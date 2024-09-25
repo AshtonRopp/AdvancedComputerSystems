@@ -49,11 +49,11 @@ As expected, we see an increase in latency across both reads and writes for each
 ### Requirements
 This experiment will:
 1. Test 64, 256, 512, 1024, and 2048 KB accesses across varied read/write percentages.
-2. Test main memory bandwidth (PCIe 3.0).
+2. Test main memory bandwidth (DDR4)
 3. Utilize all 12 threads across 8 SMT cores (optimal in an ideal world).
 
 ### Explanation
-This experiment aims to show the maximum bandwidth of my PCIe 3.0 SSD, which should operate somewhere between 4-8 GB/s. It allocates a 1 GB vector and performs various percentages of reads/writes, times the results, and outputs the results to a graph.
+This experiment aims to show the maximum bandwidth of my DDR4 memory, which should operate somewhere between 4-8 GB/s. It allocates a 1 GB vector and performs various percentages of reads/writes, times the results, and outputs the results to a graph.
 
 Additionally, another item of interest is the data access size. I found that the ideal size is 64 B, which makes sense as this is the cache line size for my system. As the CPU will first check the cache for the data, a size of 64 B would be ideal, as that is exactly equivalent to one cache line. Below are graphs from two separate runs. They show that while 64 B is obviously the ideal case, the speed of the others is more or less random.
 
