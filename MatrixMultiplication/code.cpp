@@ -1,106 +1,101 @@
 #include <iostream>
 #include <vector>
-#include <cstdlib>  // For rand() and srand()
-#include <ctime>    // For time()
-#include <utility>  // For pair()
+#include <cstdlib>
+#include <ctime>
+#include <iomanip>
 
-// Function to generate a matrix of desired sparsity
-std::vector<std::vector<int>> generateMatrix(int rows, int cols, double fullPercent) {
-    std::vector<std::vector<int>> matrix(rows, std::vector<int>(cols, 0));  // Initialize the matrix with zeros
+using namespace std;
 
-    // Calculate the number of non-zero elements based on the "full" percentage
-    int totalElements = rows * cols;
-    int nonZeroElements = static_cast<int>((fullPercent / 100.0) * totalElements);
+// Structure to represent a sparse matrix in LIL format
+struct SparseMatrix {
+    vector<vector<int>> rows;   // Row-wise storage
+    vector<vector<int>> cols;   // Column-wise storage
+    vector<vector<double>> values; // Values corresponding to the indices
+};
 
-    // Randomly assign non-zero values to the matrix
-    std::srand(static_cast<unsigned int>(std::time(0)));  // Seed for random number generator
+// Function to create a random sparse matrix
+SparseMatrix createSparseMatrix(int rows, int cols, double sparsity) {
+    SparseMatrix matrix;
+    matrix.rows.resize(rows);
+    matrix.cols.resize(rows);
+    matrix.values.resize(rows);
 
-    while (nonZeroElements > 0) {
-        int row = std::rand() % rows;
-        int col = std::rand() % cols;
-
-        // Assign a random non-zero value if the current element is zero
-        if (matrix[row][col] == 0) {
-            matrix[row][col] = std::rand() % 10 + 1;  // Random values between 1 and 10
-            nonZeroElements--;
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            if (static_cast<double>(rand()) / RAND_MAX > sparsity) {
+                matrix.rows[i].push_back(j);
+                matrix.values[i].push_back(static_cast<double>(rand() % 10 + 1)); // Random value between 1 and 10
+            }
         }
     }
-
     return matrix;
 }
 
-// Convert matrix to only include {col, value} for non-zero elements in each row
-std::vector<std::vector<std::pair<int, int>>> createSparseVersion(std::vector<std::vector<int>>& mat) {
-    // Acquire bounds
-    int num_rows = mat.size();
-    int num_cols = mat[0].size();
+// Function to multiply two sparse matrices in LIL format
+SparseMatrix multiplySparseMatrices(const SparseMatrix &A, const SparseMatrix &B, int resultRows, int resultCols) {
+    SparseMatrix result;
+    result.rows.resize(resultRows);
+    result.cols.resize(resultRows);
+    result.values.resize(resultRows);
 
-    // Create vectors for each row in new matrix format
-    std::vector<std::vector<std::pair<int, int>>> sparseMat(num_rows);
+    for (int i = 0; i < A.rows.size(); ++i) {
+        for (size_t j = 0; j < A.rows[i].size(); ++j) {
+            int aCol = A.rows[i][j];
+            double aValue = A.values[i][j];
+            for (size_t k = 0; k < B.rows[aCol].size(); ++k) {
+                int bCol = B.rows[aCol][k];
+                double bValue = B.values[aCol][k];
 
-    // Iterate through old matrix
-    for (int r = 0; r < num_rows; r++) {
-        for (int c = 0; c < num_cols; c++) {
-            // Check for non-zero values
-            if (mat[r][c] != 0) {
-                sparseMat[r].emplace_back(c, mat[r][c]); // Add newly generated element = {col, value}
+                // Add the product to the result
+                result.rows[i].push_back(bCol);
+                result.values[i].push_back(aValue * bValue);
             }
         }
     }
 
-    return sparseMat;
+    return result;
 }
 
-std::vector<std::vector<int>> multiplySparse(
-    std::vector<std::vector<int>>& a, 
-    std::vector<std::vector<int>>& b) {
-    // Result of a(ra, ca) * b(rb, rb) = c(ra, cb)
-    int num_rows = a.size();
-    int num_cols = b[0].size();
-    std::vector<std::vector<int>> ret(num_rows, std::vector<int>(num_cols));
-
-    // Create compacted sparse versions of matrices
-    std::vector<std::vector<std::pair<int, int>>> aSparse = createSparseVersion(a);
-    std::vector<std::vector<std::pair<int, int>>> bSparse = createSparseVersion(b);
-
-    // Perform optimized sparse matrix multiplication
-    for (int r = 0; r < num_rows; ++r) {
-        // Grab the column (k) and value (v1) of the entry
-        for (const auto& entryA : aSparse[r]) {
-            int k = entryA.first;
-            int v1 = entryA.second;
-
-            // Perform dot product using k and value from b mat (v2)
-            for (const auto& entryB : bSparse[k]) {
-                int c = entryB.first;
-                int v2 = entryB.second;
-
-                ret[r][c] += v1 * v2;
-            }
+// Function to print a sparse matrix
+void printSparseMatrix(const SparseMatrix &matrix) {
+    for (size_t i = 0; i < matrix.rows.size(); ++i) {
+        cout << "Row " << i << ": ";
+        for (size_t j = 0; j < matrix.rows[i].size(); ++j) {
+            cout << "(" << matrix.rows[i][j] << ", " << fixed << setprecision(2) << matrix.values[i][j] << ") ";
         }
+        cout << endl;
     }
-    
-    return ret;
 }
 
 int main() {
-    // List of matrix sizes (rows, cols) and corresponding sparsity percentages (percent full)
-    std::vector<std::pair<int, int>> matrixSizes = {{5, 5}, {10, 10}, {1500, 1500}};
-    std::vector<double> fullPercentages = {20.0, 50.0, 80.0};  // Full percentages (not empty)
+    srand(static_cast<unsigned int>(time(0))); // Seed for randomness
 
-    for (const auto& size : matrixSizes) {
-        for (double fullPercent : fullPercentages) {
-            int rows = size.first;
-            int cols = size.second;
+    // Define sizes and sparsity percentages
+    vector<pair<int, double>> testCases = {
+        {4, 0.75},  // 4x4 matrix with 75% sparsity
+    };
 
-            // Generate the sparse matrix for the given size and sparsity percentage
-            std::cout << "Generating " << rows << "x" << cols << " matrix with " << fullPercent << "% full." << std::endl;
-            std::vector<std::vector<int>> matA = generateMatrix(rows, cols, fullPercent);
-            std::vector<std::vector<int>> matB = generateMatrix(rows, cols, fullPercent);
-            
-            // Convert the matrices and multiply
-            multiplySparse(matA, matB);
-        }
+    for (size_t i = 0; i < testCases.size(); ++i) {
+        int size = testCases[i].first;
+        double sparsity = testCases[i].second;
+        
+        cout << "Creating two " << size << "x" << size << " sparse matrices with sparsity " << sparsity * 100 << "%:" << endl;
+
+        // Create two sparse matrices
+        SparseMatrix A = createSparseMatrix(size, size, sparsity);
+        SparseMatrix B = createSparseMatrix(size, size, sparsity);
+
+        // Print input matrices
+        cout << "Matrix A:" << endl;
+        printSparseMatrix(A);
+        cout << "Matrix B:" << endl;
+        printSparseMatrix(B);
+
+        // Multiply matrices
+        SparseMatrix C = multiplySparseMatrices(A, B, size, size);
+        cout << "Resulting Matrix C (A * B):" << endl;
+        printSparseMatrix(C);
+        cout << endl;
     }
 
     return 0;
