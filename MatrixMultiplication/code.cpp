@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <ctime>
 #include <iomanip>
+#include <algorithm> // for std::shuffle
+#include <random>    // for std::random_device and std::mt19937
 
 using namespace std;
 
@@ -20,9 +22,23 @@ SparseMatrix createSparseMatrix(int rows, int cols, double sparsity) {
     matrix.cols.resize(rows);
     matrix.values.resize(rows);
 
+
+    int totalSize = rows*cols;
+    int numOnes = totalSize*sparsity;
+    vector<int> nonZeroIndeces(totalSize);
+
+    for (int i = 0; i < numOnes; i++) { 
+        nonZeroIndeces[i] = 1;
+    }
+
+    // Shuffle the vector
+    random_device rd;
+    mt19937 g(rd());
+    shuffle(nonZeroIndeces.begin(), nonZeroIndeces.end(), g);
+
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-            if (static_cast<double>(rand()) / RAND_MAX > sparsity) {
+            if (nonZeroIndeces[j+i*j] == 1) {
                 matrix.rows[i].push_back(j);
                 matrix.values[i].push_back(static_cast<double>(rand() % 10 + 1)); // Random value between 1 and 10
             }
@@ -75,27 +91,33 @@ int main() {
         {4, 0.75},  // 4x4 matrix with 75% sparsity
     };
 
-    for (size_t i = 0; i < testCases.size(); ++i) {
-        int size = testCases[i].first;
-        double sparsity = testCases[i].second;
-        
-        cout << "Creating two " << size << "x" << size << " sparse matrices with sparsity " << sparsity * 100 << "%:" << endl;
+    // Define test cases
+    vector<int> sizes = {100, 1000};
+    vector<double> sparsityVals = {0.01, 0.001};
 
-        // Create two sparse matrices
-        SparseMatrix A = createSparseMatrix(size, size, sparsity);
-        SparseMatrix B = createSparseMatrix(size, size, sparsity);
+    for (size_t i = 0; i < sizes.size(); ++i) {
+        for (size_t j = 0; j < sparsityVals.size(); ++j) {
+            size_t size = sizes[i];
+            double sparsity = sparsityVals[i];
+            
+            cout << "Creating two " << size << "x" << size << " sparse matrices with sparsity " << sparsity * 100 << "%:" << endl;
 
-        // Print input matrices
-        cout << "Matrix A:" << endl;
-        printSparseMatrix(A);
-        cout << "Matrix B:" << endl;
-        printSparseMatrix(B);
+            // Create two sparse matrices
+            SparseMatrix A = createSparseMatrix(size, size, sparsity);
+            SparseMatrix B = createSparseMatrix(size, size, sparsity);
 
-        // Multiply matrices
-        SparseMatrix C = multiplySparseMatrices(A, B, size, size);
-        cout << "Resulting Matrix C (A * B):" << endl;
-        printSparseMatrix(C);
-        cout << endl;
+            // Print input matrices
+            cout << "Matrix A:" << endl;
+            printSparseMatrix(A);
+            cout << "Matrix B:" << endl;
+            printSparseMatrix(B);
+
+            // Multiply matrices
+            SparseMatrix C = multiplySparseMatrices(A, B, size, size);
+            cout << "Resulting Matrix C (A * B):" << endl;
+            printSparseMatrix(C);
+            cout << endl;
+        }
     }
 
     return 0;
