@@ -20,3 +20,5 @@ Since we store the corresponding column of each entry in the sparse matrix, we u
 </p>
 
 ### Dense-Dense Matrix Multiplication
+
+https://chryswoods.com/vector_c++/vectorisation.html

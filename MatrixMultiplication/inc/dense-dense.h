@@ -13,4 +13,8 @@ void multiplyRowRange(const std::vector<std::vector<int>>& A, const std::vector<
 
 std::vector<std::vector<int>> multiplyDenseMatrices_multithread(const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B, int numThreads);
 
+std::vector<std::vector<int>> multiplyDenseMatrices_SIMD(const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B);
+
+std::vector<std::vector<int>> multiplyDenseMatrices_all(const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B, int blockSize, int numThreads);
+
 #endif // DENSE_DENSE_H

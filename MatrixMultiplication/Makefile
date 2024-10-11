@@ -2,7 +2,7 @@
 CXX := g++
 
 # Compiler flags
-CXXFLAGS := -std=c++11 -Wall -I./inc -pthread -O3
+CXXFLAGS := -std=c++11 -Wall -I./inc -pthread -O3 -fopenmp-simd
 
 # Directories
 SRC_DIR := src
