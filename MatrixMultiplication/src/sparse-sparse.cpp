@@ -5,10 +5,7 @@
 #include <thread>          // std::thread and related classes
 #include <algorithm>       // std::min
 #include <unordered_map>   // unordered_map
-#include <iostream>
-#include <immintrin.h>
-
-
+#include <immintrin.h>     // AVX2 SIMD intrinsics
 
 // Function to perform dense-sparse matrix multiplication with no optimization
 SparseMatrix multiplySparseMatrices_none(
@@ -65,7 +62,7 @@ SparseMatrix multiplySparseMatrices_none(
 }
 
 SparseMatrix multiplySparseMatrices_cache(
-    const SparseMatrix& A, const SparseMatrix& B, int resultRows, int resultCols, int blockSize) {
+    const SparseMatrix& A, const SparseMatrix& B, int resultRows, int resultCols) {
 
     SparseMatrix result;
     result.rows.resize(resultRows);
@@ -303,8 +300,7 @@ SparseMatrix multiplySparseMatrices_SIMD(
 
 // Main function to multiply sparse matrices with multithreading
 SparseMatrix multiplySparseMatrices_all(
-    const SparseMatrix& A, const SparseMatrix& B, int resultRows, int resultCols,
-    int blockSize, int numThreads) {
+    const SparseMatrix& A, const SparseMatrix& B, int resultRows, int resultCols, int numThreads) {
 
     SparseMatrix result;
     result.rows.resize(resultRows);

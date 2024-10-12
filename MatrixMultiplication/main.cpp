@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
     auto end = std::chrono::high_resolution_clock::now();
 
     // Define test cases
-    std::vector<size_t> sizes = {500, 750, 1000};
+    std::vector<size_t> sizes = {800, 1000, 1200};
     std::vector<double> sparsityVals = {0.001, 0.01, 0.1};
 
     // Allow configurable number of threads
@@ -120,6 +120,7 @@ int main(int argc, char* argv[]) {
 
     // sparse-sparse
     if (strcmp(argv[1], "spsp") == 0) {
+        sizes = {3000, 4000, 5000};
         SparseMatrix C; // Init result
         for (size_t j = 0; j < sparsityVals.size(); ++j) {
             // Timing vectors for gnuplot
@@ -128,7 +129,7 @@ int main(int argc, char* argv[]) {
                 size_t size = sizes[i];
                 double sparsity = sparsityVals[j];
                 std::cout << "Multiplying sparse-sparse matrices of size " << size << "x" << size
-                          << " and sparsity " << sparsity << ":" << std::endl;
+                    << " and sparsity " << sparsity*100 << "%:" << std::endl;
 
                 SparseMatrix A = createSparseMatrix(size, size, sparsity);
                 SparseMatrix B = createSparseMatrix(size, size, sparsity);
@@ -140,12 +141,12 @@ int main(int argc, char* argv[]) {
                 end = std::chrono::high_resolution_clock::now();
                 double time_none = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
                 times_none.push_back(time_none);
-                std::cout << time_none << std::endl;
+                std::cout << time_none << " seconds" << std::endl;
 
                 // Cache optimization
                 std::cout << "Running operation with cache optimization" << std::endl;
                 start = std::chrono::high_resolution_clock::now();
-                C = multiplySparseMatrices_cache(A, B, size, size, 64/sizeof(int));
+                C = multiplySparseMatrices_cache(A, B, size, size);
                 end = std::chrono::high_resolution_clock::now();
                 double time_cache = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
                 times_cache.push_back(time_cache);
@@ -172,14 +173,15 @@ int main(int argc, char* argv[]) {
                 // All optimizations
                 std::cout << "Running operation with all optimizations" << std::endl;
                 start = std::chrono::high_resolution_clock::now();
-                C = multiplySparseMatrices_all(A, B, size, size, 64/sizeof(int), num_threads);
+                C = multiplySparseMatrices_all(A, B, size, size, num_threads);
                 end = std::chrono::high_resolution_clock::now();
                 double time_all = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
                 times_all.push_back(time_all);
                 std::cout << time_all << " seconds" << std::endl << std::endl;
 
                 // Create gnuplot for every sparsity
-                create_gnuplot("sparse-sparse"+std::to_string(sparsity), "Sparse-Sparse Multiplication", sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
+                std::string percent = std::to_string(sparsity*100).substr(0, 3);
+                create_gnuplot("sparse-sparse"+percent, "Sparse-Sparse Multiplication: " + percent + "%", sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
             }
         }
     }
@@ -195,7 +197,7 @@ int main(int argc, char* argv[]) {
                 size_t size = sizes[i];
                 double sparsity = sparsityVals[j];
                 std::cout << "Multiplying dense-sparse matrices of size " << size << "x" << size
-                          << " and sparsity " << sparsity << ":" << std::endl;
+                    << " and sparsity " << sparsity*100 << "%:" << std::endl;
 
                 std::vector<std::vector<int>> A = createDenseMatrix(size, size);
                 SparseMatrix B = createSparseMatrix(size, size, sparsity);
@@ -246,7 +248,8 @@ int main(int argc, char* argv[]) {
                 std::cout << time_all << " seconds" << std::endl << std::endl;
 
                 // Create gnuplot for every sparsity
-                create_gnuplot("dense-sparse"+std::to_string(sparsity), "Dense-Sparse Multiplication", sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
+                std::string percent = std::to_string(sparsity*100).substr(0, 3);
+                create_gnuplot("dense-sparse"+percent, "Dense-Sparse Multiplication: " + percent + "%", sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
             }
         }
     }

@@ -26,3 +26,10 @@ https://chryswoods.com/vector_c++/vectorisation.html
 TODO: Make sure to run with size > cache
 
 discuss openmps
+
+cache optimization;
+Use vector instead of unordered_map for row_result
+Pre-allocate memory for vectors
+Use references to avoid unnecessary copying
+Reduce cache misses by changing the loop order
+Use local variables to reduce repeated access to vector elements
