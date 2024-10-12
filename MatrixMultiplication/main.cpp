@@ -1,5 +1,7 @@
 // Local headers
-#include<dense-dense.h>
+#include <SparseMatrix.h>
+#include <dense-dense.h>
+#include <dense-sparse.h>
 
 // External headers
 #include <iostream>
@@ -12,26 +14,6 @@
 #include <random>    // std::random_device and std::mt19937
 #include <string.h>  // strcmp 
 #include <fstream>   // std::ofstream
-
-
-// Structure to represent a sparse matrix in LIL format
-struct SparseMatrix {
-    std::vector<std::vector<int>> rows;   // Row-wise storage
-    std::vector<std::vector<int>> cols;   // Column-wise storage
-    std::vector<std::vector<int>> values; // Values corresponding to the indices
-};
-
-// Create randomized matrix of size (row, col)
-std::vector<std::vector<int>> createDenseMatrix(int rows, int cols) {
-    std::vector<std::vector<int>> result(rows, std::vector<int>(cols, 0));
-
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            result[i][j] = std::rand() % 10 + 1;
-        }
-    }
-    return result;
-}
 
 // Function to create a random sparse matrix
 SparseMatrix createSparseMatrix(int rows, int cols, double sparsity) {
@@ -64,6 +46,18 @@ SparseMatrix createSparseMatrix(int rows, int cols, double sparsity) {
     return matrix;
 }
 
+// Create randomized matrix of size (row, col)
+std::vector<std::vector<int>> createDenseMatrix(int rows, int cols) {
+    std::vector<std::vector<int>> result(rows, std::vector<int>(cols, 0));
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            result[i][j] = std::rand() % 10 + 1;
+        }
+    }
+    return result;
+}
+
 // Function to multiply two sparse matrices in LIL format
 SparseMatrix multiplySparseMatrices(const SparseMatrix &A, const SparseMatrix &B, int resultRows, int resultCols) {
     SparseMatrix result;
@@ -88,37 +82,24 @@ SparseMatrix multiplySparseMatrices(const SparseMatrix &A, const SparseMatrix &B
     return result;
 }
 
-// Function to multiply dense * sparse which have same base dimension
-std::vector<std::vector<int>> multiplyDenseSparseMatrices(const std::vector<std::vector<int>> &dense, const SparseMatrix &sparse) {
-    size_t num_rows = dense.size();
-    size_t num_cols = dense[0].size();
-    std::vector<std::vector<int>> result(num_rows, std::vector<int>(num_cols, 0));
-
-    for (size_t r = 0; r < num_rows; r++) {
-        // Check each entry of the current row in the sparse matrix
-        for (size_t i = 0; i < sparse.rows[r].size(); i++) {
-            size_t col = sparse.rows[r][i]; 
-            int val = sparse.values[r][i];
-
-            // With target column, multiply and accumulate rows from dense matrix
-            for (size_t dense_r = 0; dense_r < num_rows; dense_r++) {
-                result[dense_r][col] += dense[dense_r][col] * val;
-            }
-        }
-    }
-    return result;
-}
 
 int main(int argc, char* argv[]) {
-    // Seed for randomness
+     // Seed for randomness
     std::srand(static_cast<unsigned int>(std::time(0)));
 
     // Timing vectors for gnuplot
     std::vector<double> times_none, times_cache, times_multithread, times_SIMD, times_all;
 
     // Define test cases
-    std::vector<size_t> sizes = {500, 1000};
+    std::vector<size_t> sizes = {500, 750, 1000};
     std::vector<double> sparsityVals = {0.001, 0.01};
+
+    // Allow configurable number of threads
+    int num_threads = 12;
+    if(argc > 2) {
+        num_threads = *argv[2] - '0'; // Convert from char to int
+        std::cout << "Running with " << num_threads << " threads." << std::endl;
+    }
 
     // sparse-sparse
     if (strcmp(argv[1], "spsp") == 0) {
@@ -150,7 +131,7 @@ int main(int argc, char* argv[]) {
 
                     std::cout << "Multiplying dense-sparse matrices of size " << size << "x" << size << " with sparsity " << sparsity * 100 << "%" << std::endl;
 
-                    auto C = multiplyDenseSparseMatrices(A, B);
+                    auto C = multiplyDenseSparseMatrices_none(A, B);
                 }
             }
         }
@@ -169,20 +150,13 @@ int main(int argc, char* argv[]) {
             std::cout << "Multiplying dense-dense matrices of size " << size << "x" << size << std::endl;
 
             // No optimization
-            if (size < 10000) {
-                std::cout << "Running operation with no optimization" << std::endl;
-                start = std::chrono::high_resolution_clock::now();
-                C = multiplyDenseMatrices_none(A, B);
-                end = std::chrono::high_resolution_clock::now();
-                double time_none = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
-                times_none.push_back(time_none);
-                std::cout << time_none << std::endl;
-            }
-            else {
-                std::cout << "Skipping operation with no optimization" << std::endl;
-                times_none.push_back(60*60);
-                std::cout << 60*60 << " seconds" << std::endl;
-            }
+            std::cout << "Running operation with no optimization" << std::endl;
+            start = std::chrono::high_resolution_clock::now();
+            C = multiplyDenseMatrices_none(A, B);
+            end = std::chrono::high_resolution_clock::now();
+            double time_none = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+            times_none.push_back(time_none);
+            std::cout << time_none << std::endl;
 
             // Cache optimization
             std::cout << "Running operation with cache optimization" << std::endl;
@@ -196,7 +170,7 @@ int main(int argc, char* argv[]) {
             // Multithreading optimization
             std::cout << "Running operation with multithreading optimization" << std::endl;
             start = std::chrono::high_resolution_clock::now();
-            C = multiplyDenseMatrices_multithread(A, B, 12);
+            C = multiplyDenseMatrices_multithread(A, B, num_threads);
             end = std::chrono::high_resolution_clock::now();
             double time_multithread = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
             times_multithread.push_back(time_multithread);
@@ -214,7 +188,7 @@ int main(int argc, char* argv[]) {
             // All optimizations
             std::cout << "Running operation with all optimizations" << std::endl;
             start = std::chrono::high_resolution_clock::now();
-            C = multiplyDenseMatrices_all(A, B, 64/sizeof(int), 12);
+            C = multiplyDenseMatrices_all(A, B, 64/sizeof(int), num_threads);
             end = std::chrono::high_resolution_clock::now();
             double time_all = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
             times_all.push_back(time_all);
