@@ -16,7 +16,7 @@ TODO: Elaborate
 ### Dense-Sparse Matrix Multiplication
 Since we store the corresponding column of each entry in the sparse matrix, we use the below figure to demonstrate how we can optimally perform the calculation. If we focus on the `e` index, we can see that it will be multiplied by all values in the matching column of the dense matrix. Additionally, we can see that these values are accumulated into the dense matrix row of the iten `e` is multiplied by.  Therefore, to perform dense-sparse multiplication, we can simply iterate through the sparse matrix, multiply by the appropriate value in each row of the same column of the dense matrix, and then add each result to the resulting matrix index. This is shown in the rough sketch below.
 <p align="center">
-  <img src="images/dense-sparse.png" alt="hwloc tool output" />
+  <img src="images/dense-sparse.jpg" alt="hwloc tool output" />
 </p>
 
 ### Dense-Dense Matrix Multiplication

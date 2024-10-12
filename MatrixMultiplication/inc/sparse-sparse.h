@@ -11,17 +11,11 @@ SparseMatrix multiplySparseMatrices_none(
 SparseMatrix multiplySparseMatrices_cache(
     const SparseMatrix& A, const SparseMatrix& B, int resultRows, int resultCols, int blockSize);
 
-void multiplyPartial(const SparseMatrix& A, const SparseMatrix& B, SparseMatrix& result, 
-    int startRow, int endRow);
-
 SparseMatrix multiplySparseMatrices_multithread(
     const SparseMatrix& A, const SparseMatrix& B, int resultRows, int resultCols, int numThreads);
 
 SparseMatrix multiplySparseMatrices_SIMD(
     const SparseMatrix& A, const SparseMatrix& B, int resultRows, int resultCols);
-
-void multiplyBlock(const SparseMatrix& A, const SparseMatrix& B, SparseMatrix& result, 
-    int ii, int jj, int kk, int blockSize, int resultCols);
 
 SparseMatrix multiplySparseMatrices_all(
     const SparseMatrix& A, const SparseMatrix& B, int resultRows, int resultCols,

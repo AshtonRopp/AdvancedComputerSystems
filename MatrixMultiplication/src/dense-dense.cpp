@@ -135,7 +135,6 @@ std::vector<std::vector<int>> multiplyDenseMatrices_SIMD(
     return result;
 }
 
-
 // Function to multiply dense matrices using optimization methods
 std::vector<std::vector<int>> multiplyDenseMatrices_all(
     const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B, int blockSize, int numThreads) {

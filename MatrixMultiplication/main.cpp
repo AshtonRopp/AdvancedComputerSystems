@@ -21,8 +21,7 @@ SparseMatrix createSparseMatrix(int rows, int cols, double sparsity) {
 
     SparseMatrix matrix;
     matrix.rows.resize(rows);
-    matrix.cols.resize(cols);
-    matrix.values.resize(cols);
+    matrix.values.resize(rows);
 
     int totalSize = rows * cols;
     int numOnes = totalSize * sparsity;
