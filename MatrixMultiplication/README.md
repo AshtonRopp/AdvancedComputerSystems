@@ -32,7 +32,7 @@ LIL allows for dynamic updates, making it easy to incrementally build sparse mat
 
 ## Sparse-Sparse Matrix Multiplication
 ### Standard Implementation
-#### Key Steps:
+
 1. **Input Matrices:**
    - Two sparse matrices `A` and `B` are provided. Both are in a row-centric format, where each row stores a list of non-zero elements along with their column indices. Additionally, the number of rows and columns for the result matrix is defined.
 
@@ -49,11 +49,65 @@ LIL allows for dynamic updates, making it easy to incrementally build sparse mat
 4. **Storing Results:**
    - Once a row multiplication is completed, the algorithm stores only the non-zero values in the corresponding row of the result matrix. This keeps the result matrix in sparse format and avoids unnecessary storage of zeros.
 
+### Cache Optimization
+#### I implemented `Loop Tiling` as it provides the following benefits:
+
+1. **Minimizes Cache Misses**
+   - **Spatial Locality**: Keeps data accessed together, improving cache hits.
+   - **Temporal Locality**: Reuses data within tiles, reducing memory fetches.
+
+2. **Increases Speed**
+   - **Reduced Latency**: Faster access to data in cache compared to main memory.
+   - **Improved Instruction-Level Parallelism**: Allows the compiler to better utilize flags such as -O2 or -O3.
+
+3. **Enhances Multithreading Performance**
+   - **Work Distribution**: Balances workloads across threads using separate tiles.
+   - **Reduced False Sharing**: Aligns data access patterns to minimize conflicts.
+
+
+<div style="background-color: #f0f8ff; color: #333333; padding: 15px; border-radius: 5px; border: 1px solid #b0e0e6;">
+
+**Benefits of Loop Tiling**
+
+1. **Minimizes Cache Misses**
+   - **Spatial Locality**: Keeps data accessed together, improving cache hits.
+   - **Temporal Locality**: Reuses data within tiles, reducing memory fetches.
+   - **Better Cache Utilization**: Optimizes memory access patterns based on cache size.
+
+2. **Increases Speed**
+   - **Reduced Latency**: Faster access to data in cache compared to main memory.
+   - **Increased Throughput**: More data processed in less time due to optimized access.
+   - **Improved Instruction-Level Parallelism**: Allows for better compiler optimizations.
+
+3. **Enhances Multithreading Performance**
+   - **Work Distribution**: Balances workloads across threads using separate tiles.
+   - **Reduced False Sharing**: Aligns data access patterns to minimize conflicts.
+
+4. **Adaptable to Hardware**
+   - **Tailored to Cache Hierarchy**: Matches tile size to cache architecture for maximum performance.
+
+</div>
+
+
+### Multithreading Optimization
+### SIMD Optimization
+### All Optimizations
+
+### Results and Analysis
+<p align="center">
+  <img src="images/dense-dense.png" alt="Results for dense-dense multiplication" />
+</p>
+Here, we see that the above optimization methods were extremely effective, with SIMD being the clear best. We can also see that for smaller matrices, multithreading may be less optimal than effective caching.
+
+### Cache Optimization
+### Multithreading Optimization
+### SIMD Optimization
+### All Optimizations
 
 ### Dense-Sparse Matrix Multiplication
 Since we store the corresponding column of each entry in the sparse matrix, we use the below figure to demonstrate how we can optimally perform the calculation. If we focus on the `e` index, we can see that it will be multiplied by all values in the matching column of the dense matrix. Additionally, we can see that these values are accumulated into the dense matrix row of the iten `e` is multiplied by.  Therefore, to perform dense-sparse multiplication, we can simply iterate through the sparse matrix, multiply by the appropriate value in each row of the same column of the dense matrix, and then add each result to the resulting matrix index. This is shown in the rough sketch below.
 <p align="center">
-  <img src="images/dense-sparse.jpg" alt="hwloc tool output" />
+  <img src="images/dense-sparse.jpg" alt="Calculation for dense-sparse" />
 </p>
 
 ### Dense-Dense Matrix Multiplication
