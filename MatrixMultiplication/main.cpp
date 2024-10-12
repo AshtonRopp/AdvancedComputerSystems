@@ -2,6 +2,7 @@
 #include <SparseMatrix.h>
 #include <dense-dense.h>
 #include <dense-sparse.h>
+#include <sparse-sparse.h>
 
 // External headers
 #include <iostream>
@@ -20,14 +21,14 @@ SparseMatrix createSparseMatrix(int rows, int cols, double sparsity) {
 
     SparseMatrix matrix;
     matrix.rows.resize(rows);
-    matrix.cols.resize(rows);
-    matrix.values.resize(rows);
+    matrix.cols.resize(cols);
+    matrix.values.resize(cols);
 
     int totalSize = rows * cols;
     int numOnes = totalSize * sparsity;
     std::vector<int> nonZeroIndices(totalSize);
 
-    for (int i = 0; i < numOnes; i++) { 
+    for (int i = 0; i < numOnes; i++) {
         nonZeroIndices[i] = 1;
     }
 
@@ -59,33 +60,8 @@ std::vector<std::vector<int>> createDenseMatrix(int rows, int cols) {
     return result;
 }
 
-// Function to multiply two sparse matrices in LIL format
-SparseMatrix multiplySparseMatrices(const SparseMatrix &A, const SparseMatrix &B, int resultRows, int resultCols) {
-
-    SparseMatrix result;
-    result.rows.resize(resultRows);
-    result.cols.resize(resultRows);
-    result.values.resize(resultRows);
-
-    for (size_t i = 0; i < A.rows.size(); ++i) {
-        for (size_t j = 0; j < A.rows[i].size(); ++j) {
-            int aCol = A.rows[i][j];
-            double aValue = A.values[i][j];
-            for (size_t k = 0; k < B.rows[aCol].size(); ++k) {
-                int bCol = B.rows[aCol][k];
-                double bValue = B.values[aCol][k];
-
-                // Add the product to the result
-                result.rows[i].push_back(bCol);
-                result.values[i].push_back(aValue * bValue);
-            }
-        }
-    }
-    return result;
-}
-
 // Used by all calls to generate corresponding plot
-void create_gnuplot(const std::string& filename, const std::vector<size_t>& sizes,
+void create_gnuplot(const std::string& filename, const std::string& title, const std::vector<size_t>& sizes,
     const std::vector<double>& times_none, const std::vector<double>& times_cache,
     const std::vector<double>& times_multithread, const std::vector<double>& times_SIMD,
     const std::vector<double>& times_all) {
@@ -100,7 +76,7 @@ void create_gnuplot(const std::string& filename, const std::vector<size_t>& size
 
     // Create gnuplot script
     std::ofstream gnuplot_file(filename + ".gp");
-    gnuplot_file << "set title 'Matrix Multiplication Optimizations'\n";
+    gnuplot_file << "set title '" << title << "'\n";
     gnuplot_file << "set xlabel 'Row/Column Size'\n";
     gnuplot_file << "set ylabel 'Time(s)'\n";
     gnuplot_file << "set ytics\n";
@@ -128,8 +104,6 @@ int main(int argc, char* argv[]) {
     // Seed for randomness
     std::srand(static_cast<unsigned int>(std::time(0)));
 
-    
-    
     // Timing variables
     auto start = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();
@@ -147,26 +121,73 @@ int main(int argc, char* argv[]) {
 
     // sparse-sparse
     if (strcmp(argv[1], "spsp") == 0) {
-        for (size_t i = 0; i < sizes.size(); ++i) {
-            for (size_t j = 0; j < sparsityVals.size(); ++j) {
+        SparseMatrix C; // Init result
+        for (size_t j = 0; j < sparsityVals.size(); ++j) {
+            // Timing vectors for gnuplot
+            std::vector<double> times_none, times_cache, times_multithread, times_SIMD, times_all;
+            for (size_t i = 0; i < sizes.size(); ++i) {
                 size_t size = sizes[i];
                 double sparsity = sparsityVals[j];
+                std::cout << "Multiplying sparse-sparse matrices of size " << size << "x" << size
+                          << " and sparsity " << sparsity << ":" << std::endl;
 
-                // Create two sparse matrices
                 SparseMatrix A = createSparseMatrix(size, size, sparsity);
                 SparseMatrix B = createSparseMatrix(size, size, sparsity);
-                
-                std::cout << "Multiplying sparse-sparse of size " << size << "x" << size << " with sparsity " << sparsity * 100 << "%" << std::endl;
-                // Multiply matrices
-                SparseMatrix C = multiplySparseMatrices(A, B, size, size);
+
+                // No optimization
+                std::cout << "Running operation with no optimization" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplySparseMatrices_none(A, B, size, size);
+                end = std::chrono::high_resolution_clock::now();
+                double time_none = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_none.push_back(time_none);
+                std::cout << time_none << std::endl;
+
+                // Cache optimization
+                std::cout << "Running operation with cache optimization" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplySparseMatrices_cache(A, B, size, size, 64/sizeof(int));
+                end = std::chrono::high_resolution_clock::now();
+                double time_cache = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_cache.push_back(time_cache);
+                std::cout << time_cache << " seconds" << std::endl;
+
+                // Multithreading optimization
+                std::cout << "Running operation with multithreading optimization" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplySparseMatrices_multithread(A, B, size, size, num_threads);
+                end = std::chrono::high_resolution_clock::now();
+                double time_multithread = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_multithread.push_back(time_multithread);
+                std::cout << time_multithread << " seconds" << std::endl;
+
+                // SIMD optimization
+                std::cout << "Running operation with SIMD optimization" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplySparseMatrices_SIMD(A, B, size, size);
+                end = std::chrono::high_resolution_clock::now();
+                double time_SIMD = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_SIMD.push_back(time_SIMD);
+                std::cout << time_SIMD << " seconds" << std::endl;
+
+                // All optimizations
+                std::cout << "Running operation with all optimizations" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplySparseMatrices_all(A, B, size, size, 64/sizeof(int), num_threads);
+                end = std::chrono::high_resolution_clock::now();
+                double time_all = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_all.push_back(time_all);
+                std::cout << time_all << " seconds" << std::endl << std::endl;
+
+                // Create gnuplot for every sparsity
+                create_gnuplot("sparse-sparse"+std::to_string(sparsity), "Sparse-Sparse Multiplication", sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
             }
         }
     }
 
     // dense-sparse
     else if (strcmp(argv[1], "dsp") == 0) {
-
-        std::vector<std::vector<int>> C;
+        std::vector<std::vector<int>> C; // Init result
         for (size_t j = 0; j < sparsityVals.size(); ++j) {
             // Timing vectors for gnuplot
             std::vector<double> times_none, times_cache, times_multithread, times_SIMD, times_all;
@@ -174,7 +195,8 @@ int main(int argc, char* argv[]) {
 
                 size_t size = sizes[i];
                 double sparsity = sparsityVals[j];
-                std::cout << "Size: " << size << std::endl;
+                std::cout << "Multiplying dense-sparse matrices of size " << size << "x" << size
+                          << " and sparsity " << sparsity << ":" << std::endl;
 
                 std::vector<std::vector<int>> A = createDenseMatrix(size, size);
                 SparseMatrix B = createSparseMatrix(size, size, sparsity);
@@ -225,7 +247,7 @@ int main(int argc, char* argv[]) {
                 std::cout << time_all << " seconds" << std::endl << std::endl;
 
                 // Create gnuplot for every sparsity
-                create_gnuplot("dense-sparse"+std::to_string(sparsity), sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
+                create_gnuplot("dense-sparse"+std::to_string(sparsity), "Dense-Sparse Multiplication", sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
             }
         }
     }
@@ -239,9 +261,8 @@ int main(int argc, char* argv[]) {
             std::vector<std::vector<int>> A = createDenseMatrix(size, size);
             std::vector<std::vector<int>> B = createDenseMatrix(size, size);
             std::vector<std::vector<int>> C;
-            
 
-            std::cout << "Multiplying dense-dense matrices of size " << size << "x" << size << std::endl;
+            std::cout << "Multiplying dense-dense matrices of size " << size << "x" << size << ":" << std::endl;
 
             // No optimization
             std::cout << "Running operation with no optimization" << std::endl;
@@ -289,8 +310,8 @@ int main(int argc, char* argv[]) {
             std::cout << time_all << " seconds" << std::endl;
         }
 
-        create_gnuplot("dense-dense", sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
-       
+        // Create single plot (no individual plots for sparsity)
+        create_gnuplot("dense-dense", "Dense-Dense Matrix Multiplication", sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
     }
 
     return 0;

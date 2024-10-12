@@ -7,6 +7,7 @@
 // Function to multiply dense matrices
 std::vector<std::vector<int>> multiplyDenseMatrices_none(
     const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B) {
+
     size_t rowsA = A.size();
     size_t colsA = A[0].size();
     size_t colsB = B[0].size();
@@ -29,6 +30,7 @@ std::vector<std::vector<int>> multiplyDenseMatrices_none(
 // Function to multiply dense matrices using loop tiling
 std::vector<std::vector<int>> multiplyDenseMatrices_cache(
     const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B, int blockSize) {
+
     size_t rowsA = A.size();
     size_t colsA = A[0].size();
     size_t colsB = B[0].size();
@@ -40,7 +42,6 @@ std::vector<std::vector<int>> multiplyDenseMatrices_cache(
     for (int i = 0; i < rowsA; i += blockSize) {
         for (int j = 0; j < colsB; j += blockSize) {
             for (int k = 0; k < colsA; k += blockSize) {
-                
                 // Multiply blocks
                 for (int ii = i; ii < std::min(i + blockSize, (int)rowsA); ++ii) {
                     for (int jj = j; jj < std::min(j + blockSize, (int)colsB); ++jj) {
@@ -59,6 +60,7 @@ std::vector<std::vector<int>> multiplyDenseMatrices_cache(
 // Function to multiply a portion of the matrix
 void multiplyRowRange(const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B,
     std::vector<std::vector<int>>& result, int startRow, int endRow) {
+
     size_t colsA = A[0].size();
     size_t colsB = B[0].size();
 
@@ -74,6 +76,7 @@ void multiplyRowRange(const std::vector<std::vector<int>>& A, const std::vector<
 // Function to multiply dense matrices using multithreading
 std::vector<std::vector<int>> multiplyDenseMatrices_multithread(
     const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B, int numThreads) {
+
     size_t rowsA = A.size();
     size_t colsA = A[0].size();
     size_t colsB = B[0].size();
@@ -111,6 +114,7 @@ std::vector<std::vector<int>> multiplyDenseMatrices_multithread(
 // Function to multiply dense matrices using SIMD instructions
 std::vector<std::vector<int>> multiplyDenseMatrices_SIMD(
     const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B) {
+
     size_t rowsA = A.size();
     size_t colsA = A[0].size();
     size_t colsB = B[0].size();
@@ -135,6 +139,7 @@ std::vector<std::vector<int>> multiplyDenseMatrices_SIMD(
 // Function to multiply dense matrices using optimization methods
 std::vector<std::vector<int>> multiplyDenseMatrices_all(
     const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B, int blockSize, int numThreads) {
+
     size_t rowsA = A.size();
     size_t colsA = A[0].size();
     size_t colsB = B[0].size();
