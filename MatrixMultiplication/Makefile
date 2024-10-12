@@ -19,7 +19,7 @@ SOURCES := $(filter-out $(MAIN),$(wildcard $(SRC_DIR)/*.cpp))
 OBJECTS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 
 # Output executable name
-TARGET := mult
+TARGET := mult.exe
 
 # Default target
 all: $(BUILD_DIR) $(TARGET)
