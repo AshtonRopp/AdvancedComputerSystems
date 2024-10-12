@@ -17,6 +17,7 @@
 
 // Function to create a random sparse matrix
 SparseMatrix createSparseMatrix(int rows, int cols, double sparsity) {
+
     SparseMatrix matrix;
     matrix.rows.resize(rows);
     matrix.cols.resize(rows);
@@ -60,6 +61,7 @@ std::vector<std::vector<int>> createDenseMatrix(int rows, int cols) {
 
 // Function to multiply two sparse matrices in LIL format
 SparseMatrix multiplySparseMatrices(const SparseMatrix &A, const SparseMatrix &B, int resultRows, int resultCols) {
+
     SparseMatrix result;
     result.rows.resize(resultRows);
     result.cols.resize(resultRows);
@@ -82,17 +84,59 @@ SparseMatrix multiplySparseMatrices(const SparseMatrix &A, const SparseMatrix &B
     return result;
 }
 
+// Used by all calls to generate corresponding plot
+void create_gnuplot(const std::string& filename, const std::vector<size_t>& sizes,
+    const std::vector<double>& times_none, const std::vector<double>& times_cache,
+    const std::vector<double>& times_multithread, const std::vector<double>& times_SIMD,
+    const std::vector<double>& times_all) {
+
+    // Plot data
+    std::ofstream data_file(filename + ".dat");
+    data_file << "Size No-Optimization(s) Cache-Optimization(s) Multithread-Optimization(s) SIMD-Optimization(s) All-Optimization(s)\n";
+    for (size_t i = 0; i < sizes.size(); ++i) {
+        data_file << sizes[i] << " " << times_none[i] << " " << times_cache[i] << " " << times_multithread[i] << " " << times_SIMD[i] << " " << times_all[i] << "\n";
+    }
+    data_file.close();
+
+    // Create gnuplot script
+    std::ofstream gnuplot_file(filename + ".gp");
+    gnuplot_file << "set title 'Matrix Multiplication Optimizations'\n";
+    gnuplot_file << "set xlabel 'Row/Column Size'\n";
+    gnuplot_file << "set ylabel 'Time(s)'\n";
+    gnuplot_file << "set ytics\n";
+    gnuplot_file << "set grid\n";
+    gnuplot_file << "set key inside left\n";
+    gnuplot_file << "set terminal pngcairo size 800,600\n";
+    gnuplot_file << "set output '" << filename << ".png'\n";
+    gnuplot_file << "plot '" << filename << ".dat' using 1:2 with lines title 'No Optimizations' lw 2 axis x1y1, \\\n";
+    gnuplot_file << "     '" << filename << ".dat' using 1:3 with lines title 'Cache Optimization' lw 2 axis x1y1, \\\n";
+    gnuplot_file << "     '" << filename << ".dat' using 1:4 with lines title 'Multithread Optimization' lw 2 axis x1y1, \\\n";
+    gnuplot_file << "     '" << filename << ".dat' using 1:5 with lines title 'SIMD Optimization' lw 2 axis x1y1, \\\n";
+    gnuplot_file << "     '" << filename << ".dat' using 1:6 with lines title 'All Optimizations' lw 2 axis x1y1\n";
+
+    gnuplot_file.close();
+
+    // Call gnuplot to generate the plot
+    std::string command = "gnuplot " + filename + ".gp";
+    system(command.c_str());
+    system(("rm " + filename + ".gp").c_str());
+    system(("rm " + filename + ".dat").c_str());
+}
 
 int main(int argc, char* argv[]) {
-     // Seed for randomness
+
+    // Seed for randomness
     std::srand(static_cast<unsigned int>(std::time(0)));
 
-    // Timing vectors for gnuplot
-    std::vector<double> times_none, times_cache, times_multithread, times_SIMD, times_all;
+    
+    
+    // Timing variables
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
 
     // Define test cases
     std::vector<size_t> sizes = {500, 750, 1000};
-    std::vector<double> sparsityVals = {0.001, 0.01};
+    std::vector<double> sparsityVals = {0.001, 0.01, 0.1};
 
     // Allow configurable number of threads
     int num_threads = 12;
@@ -121,31 +165,81 @@ int main(int argc, char* argv[]) {
 
     // dense-sparse
     else if (strcmp(argv[1], "dsp") == 0) {
-        for (size_t i = 0; i < sizes.size(); ++i) {
-            for (size_t j = 0; j < sparsityVals.size(); ++j) {
+
+        std::vector<std::vector<int>> C;
+        for (size_t j = 0; j < sparsityVals.size(); ++j) {
+            // Timing vectors for gnuplot
+            std::vector<double> times_none, times_cache, times_multithread, times_SIMD, times_all;
+            for (size_t i = 0; i < sizes.size(); ++i) {
+
                 size_t size = sizes[i];
                 double sparsity = sparsityVals[j];
-                for (size_t j = 0; j < sparsityVals.size(); ++j) {
-                    std::vector<std::vector<int>> A = createDenseMatrix(size, size);
-                    SparseMatrix B = createSparseMatrix(size, size, sparsity);
+                std::cout << "Size: " << size << std::endl;
 
-                    std::cout << "Multiplying dense-sparse matrices of size " << size << "x" << size << " with sparsity " << sparsity * 100 << "%" << std::endl;
+                std::vector<std::vector<int>> A = createDenseMatrix(size, size);
+                SparseMatrix B = createSparseMatrix(size, size, sparsity);
 
-                    auto C = multiplyDenseSparseMatrices_none(A, B);
-                }
+                // No optimization
+                std::cout << "Running operation with no optimization" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplyDenseSparseMatrices_none(A, B);
+                end = std::chrono::high_resolution_clock::now();
+                double time_none = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_none.push_back(time_none);
+                std::cout << time_none << std::endl;
+
+                // Cache optimization
+                std::cout << "Running operation with cache optimization" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplyDenseSparseMatrices_cache(A, B, 64/sizeof(int));
+                end = std::chrono::high_resolution_clock::now();
+                double time_cache = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_cache.push_back(time_cache);
+                std::cout << time_cache << " seconds" << std::endl;
+
+                // Multithreading optimization
+                std::cout << "Running operation with multithreading optimization" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplyDenseSparseMatrices_multithread(A, B, num_threads);
+                end = std::chrono::high_resolution_clock::now();
+                double time_multithread = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_multithread.push_back(time_multithread);
+                std::cout << time_multithread << " seconds" << std::endl;
+
+                // SIMD optimization
+                std::cout << "Running operation with SIMD optimization" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplyDenseSparseMatrices_SIMD(A, B);
+                end = std::chrono::high_resolution_clock::now();
+                double time_SIMD = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_SIMD.push_back(time_SIMD);
+                std::cout << time_SIMD << " seconds" << std::endl;
+
+                // All optimizations
+                std::cout << "Running operation with all optimizations" << std::endl;
+                start = std::chrono::high_resolution_clock::now();
+                C = multiplyDenseSparseMatrices_all(A, B, 64/sizeof(int), num_threads);
+                end = std::chrono::high_resolution_clock::now();
+                double time_all = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+                times_all.push_back(time_all);
+                std::cout << time_all << " seconds" << std::endl << std::endl;
+
+                // Create gnuplot for every sparsity
+                create_gnuplot("dense-sparse"+std::to_string(sparsity), sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
             }
         }
     }
 
     // dense-dense
     else {
+        // Timing vectors for gnuplot
+        std::vector<double> times_none, times_cache, times_multithread, times_SIMD, times_all;
         for (size_t i = 0; i < sizes.size(); ++i) {
             size_t size = sizes[i];
             std::vector<std::vector<int>> A = createDenseMatrix(size, size);
             std::vector<std::vector<int>> B = createDenseMatrix(size, size);
             std::vector<std::vector<int>> C;
-            auto start = std::chrono::high_resolution_clock::now();
-            auto end = std::chrono::high_resolution_clock::now();
+            
 
             std::cout << "Multiplying dense-dense matrices of size " << size << "x" << size << std::endl;
 
@@ -194,38 +288,10 @@ int main(int argc, char* argv[]) {
             times_all.push_back(time_all);
             std::cout << time_all << " seconds" << std::endl;
         }
+
+        create_gnuplot("dense-dense", sizes, times_none, times_cache, times_multithread, times_SIMD, times_all);
+       
     }
-
-    // Plot data
-    std::string filename = "plot";
-    std::ofstream data_file(filename + ".dat");
-    data_file << "Size No-Optimization(s) Cache-Optimization(s) Multithread-Optimization(s) SIMD-Optimization(s) All-Optimization(s)\n";
-    for (size_t i = 0; i < sizes.size(); ++i) {
-        data_file << sizes[i] << " " << times_none[i] << " " << times_cache[i] << " " << times_multithread[i] << " " << times_SIMD[i] << " " << times_all[i] << "\n";
-    }
-    data_file.close();
-
-    // Create gnuplot script
-    std::ofstream gnuplot_file(filename + ".gp");
-    gnuplot_file << "set title 'Matrix Multiplication Optimizations'\n";
-    gnuplot_file << "set xlabel 'Row/Column Size'\n";
-    gnuplot_file << "set ylabel 'Time(s)'\n";
-    gnuplot_file << "set ytics\n";
-    gnuplot_file << "set grid\n";
-    gnuplot_file << "set key inside left\n";
-    gnuplot_file << "set terminal pngcairo size 800,600\n";
-    gnuplot_file << "set output '" << filename << ".png'\n";
-    gnuplot_file << "plot '" << filename << ".dat' using 1:2 with lines title 'No Optimizations' lw 2 axis x1y1, \\\n";
-    gnuplot_file << "     '" << filename << ".dat' using 1:3 with lines title 'Cache Optimization' lw 2 axis x1y1, \\\n";
-    gnuplot_file << "     '" << filename << ".dat' using 1:4 with lines title 'Multithread Optimization' lw 2 axis x1y1, \\\n";
-    gnuplot_file << "     '" << filename << ".dat' using 1:5 with lines title 'SIMD Optimization' lw 2 axis x1y1, \\\n";
-    gnuplot_file << "     '" << filename << ".dat' using 1:6 with lines title 'All Optimizations' lw 2 axis x1y1\n";
-
-    gnuplot_file.close();
-
-    // Call gnuplot to generate the plot
-    std::string command = "gnuplot " + filename + ".gp";
-    system(command.c_str());
 
     return 0;
 }
