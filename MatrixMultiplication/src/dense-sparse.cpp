@@ -4,6 +4,7 @@
 #include <SparseMatrix.h> // SparseMatrix
 #include <iomanip>        // std::invalid_argument, size_t
 #include <thread>         // std::thread and related classes
+#include <immintrin.h>    // AVX2 SIMD instructions
 
 // Function to multiply dense * sparse which have same base dimension
 std::vector<std::vector<int>> multiplyDenseSparseMatrices_none(
@@ -108,14 +109,28 @@ std::vector<std::vector<int>> multiplyDenseSparseMatrices_SIMD(
             size_t col = sparse.rows[r][i]; 
             int val = sparse.values[r][i];
 
-            // With target column, multiply and accumulate rows from dense matrix
-            #pragma omp simd
-            for (size_t dense_r = 0; dense_r < num_rows; dense_r++) {
-               result[dense_r][col] += dense[dense_r][col] * val;
+            // Load dense matrix values for the target column using AVX2
+            for (size_t dense_r = 0; dense_r < num_rows; dense_r += 8) { // Process 8 rows at a time
+                // Ensure we don't exceed the bounds
+                __m256i dense_vals = _mm256_setzero_si256(); // Initialize a zero vector for accumulation
+
+                // Load up to 8 elements from the dense matrix into SIMD register
+                for (size_t j = 0; j < 8 && (dense_r + j) < num_rows; j++) {
+                    dense_vals = _mm256_insert_epi32(dense_vals, dense[dense_r + j][col], j);
+                }
+
+                // Multiply the dense values by the sparse value
+                __m256i sparse_vals = _mm256_set1_epi32(val); // Broadcast the sparse value
+                __m256i prod = _mm256_mullo_epi32(dense_vals, sparse_vals); // Multiply dense values with sparse value
+
+                // Accumulate the products into the result matrix
+                for (size_t j = 0; j < 8 && (dense_r + j) < num_rows; j++) {
+                    result[dense_r + j][col] += _mm256_extract_epi32(prod, j);
+                }
             }
         }
     }
-    return result;
+    return result;  // Return the resulting matrix
 }
 
 std::vector<std::vector<int>> multiplyDenseSparseMatrices_all(

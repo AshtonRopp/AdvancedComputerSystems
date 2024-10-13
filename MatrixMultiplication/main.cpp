@@ -108,13 +108,13 @@ int main(int argc, char* argv[]) {
     auto end = std::chrono::high_resolution_clock::now();
 
     // Define test cases
-    std::vector<size_t> sizes = {800, 1000, 1200};
+    std::vector<size_t> sizes = {1200, 1500, 1800};
     std::vector<double> sparsityVals = {0.001, 0.01, 0.1};
 
     // Allow configurable number of threads
     int num_threads = 12;
     if(argc > 2) {
-        num_threads = *argv[2] - '0'; // Convert from char to int
+        num_threads = std::stoi(argv[2]); // Convert from str to int
         std::cout << "Running with " << num_threads << " threads." << std::endl;
     }
 
@@ -209,7 +209,7 @@ int main(int argc, char* argv[]) {
                 end = std::chrono::high_resolution_clock::now();
                 double time_none = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
                 times_none.push_back(time_none);
-                std::cout << time_none << std::endl;
+                std::cout << time_none << " seconds" << std::endl;
 
                 // Cache optimization
                 std::cout << "Running operation with cache optimization" << std::endl;
