@@ -158,8 +158,8 @@ Standard matrix multiplication algorithm with the following optimizations:
 
 ### Sample Performance Comparison Table
 
-| Matrix Type   | Size | Sparsity | Baseline (s) | Cache Opt (s) | Multithreading (s) | SIMD (s) | All Optimizations (s) | Speedup |
-|---------------|------|----------|--------------|---------------|-------------------|----------|----------------------|---------|
+| Matrix Type     | Size | Sparsity | Baseline (s) | Cache (s) | Multithreading (s) | SIMD (s) | All Optimizations (s) | Speedup |
+|-----------------|------|----------|--------------|-------------|-------------------|----------|----------------------|---------|
 | Sparse-Sparse | 5000 | 0.1% | 0.016 | 0.036 | 0.007 | 0.026 | 0.019 | 0.84x |
 | Sparse-Sparse | 5000 | 1% | 2.016 | 0.511 | 0.495 | 0.265 | 0.059 | 34.2x |
 | Sparse-Sparse | 5000 | 10% | 16.724 | 1.934 | 4.841 | 2.027 | 0.746 | 22.4x |
