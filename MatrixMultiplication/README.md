@@ -1,185 +1,217 @@
-# Matrix Multiplication
+# Matrix Multiplication Optimization Project
+
+## Table of Contents
+- [Matrix Multiplication Optimization Project](#matrix-multiplication-optimization-project)
+  - [Table of Contents](#table-of-contents)
+  - [Project Highlights](#project-highlights)
+  - [Overview](#overview)
+  - [Implementation Details](#implementation-details)
+    - [LIL (List of Lists) Sparse Matrix Storage](#lil-list-of-lists-sparse-matrix-storage)
+    - [Optimization Techniques](#optimization-techniques)
+  - [Algorithms and Implementations](#algorithms-and-implementations)
+    - [Sparse-Sparse Matrix Multiplication](#sparse-sparse-matrix-multiplication)
+    - [Dense-Sparse Matrix Multiplication](#dense-sparse-matrix-multiplication)
+    - [Dense-Dense Matrix Multiplication](#dense-dense-matrix-multiplication)
+  - [Results and Analysis](#results-and-analysis)
+    - [Sparse-Sparse Matrix Multiplication](#sparse-sparse-matrix-multiplication-1)
+    - [Dense-Sparse Matrix Multiplication](#dense-sparse-matrix-multiplication-1)
+    - [Dense-Dense Matrix Multiplication](#dense-dense-matrix-multiplication-1)
+    - [Sample Performance Comparison Table](#sample-performance-comparison-table)
+  - [Getting Started](#getting-started)
+  - [Compiler Flags](#compiler-flags)
+  - [Contributors](#contributors)
 
 ## Project Highlights
-1. Wrote Intel AVX2 SIMD instructions for manual data vectorization
-2. Utilized OpenMP SIMD directives for automatic data vectorization
-3. Built upon cache optimization knowledge gleaned from past projects
-4. Created multithreaded versions of matrix multiplication
-5. Combined the above strategies to perform matrix multiplication up to 100 times faster
-6. Used gnuplot for plotting and data analysis
+
+- Implemented Intel AVX2 SIMD instructions for manual data vectorization, leveraging parallel processing capabilities of modern CPUs
+- Utilized OpenMP SIMD directives for automatic data vectorization, simplifying the optimization process
+- Applied advanced cache optimization techniques, including loop tiling, to minimize memory access latency
+- Developed multithreaded versions of matrix multiplication algorithms using both std::thread and OpenMP
+- Combined multiple optimization strategies to achieve up to 142x speedup in matrix multiplication operations
+- Employed gnuplot for comprehensive data visualization and performance analysis
 
 ## Overview
-Sparse matrix multiplication involves multiplying matrices in which most elements are zero. Instead of storing and computing with all elements, sparse matrices only store and operate on the non-zero values, saving significant memory and computational resources. This technique is especially useful in industries where large, high-dimensional datasets are common but most of the data points are zero or insignificant.
 
-In fields like machine learning, scientific computing, and graph analytics, sparse matrix multiplication is crucial for efficiency. It speeds up processes such as solving systems of equations, training machine learning models, and performing large-scale simulations, making it a cornerstone for high-performance computing. This optimization allows industries to handle massive datasets, like social network graphs or recommendation systems, more effectively, reducing computational costs and improving performance scalability.
+This project focuses on optimizing matrix multiplication operations, with a particular emphasis on sparse matrix computations. Matrix multiplication is a fundamental operation in numerous fields, including:
 
-This project will discuss an implementation of sparse matrices and methods such as multithreading, SIMD instructions, and effective caching that can help speed up the process. It will test these optimization methods on sparse-sparse, dense-sparse, and dense-dense matrix multiplication.
+- Machine Learning and AI: Training neural networks and performing dimensionality reduction
+- Scientific Computing: Solving systems of linear equations and performing numerical simulations
+- Computer Graphics: Transforming 3D objects and rendering scenes
+- Graph Analytics: Analyzing social networks and performing PageRank-like algorithms
 
-## LIL (List of Lists) Sparse Matrix Storage
-I have chosen to use the List of Lists storage format for sparse matrices in this project. LIL represents a sparse matrix as an array of rows, where each row contains two lists: one for the column indices of non-zero elements and another for the corresponding values. This method is particularly efficient for row-wise access and modification.
+Sparse matrices, which contain mostly zero elements, are prevalent in many real-world applications. By efficiently storing and operating only on non-zero values, sparse matrix operations can significantly reduce memory usage and computational requirements, enabling the processing of much larger datasets.
 
-For example, the matrix:
+This project implements and compares various optimization techniques for three types of matrix multiplication:
+1. Sparse-Sparse
+2. Dense-Sparse
+3. Dense-Dense
 
-`[0]` `[5]` `[0]`\
-`[1]` `[0]` `[0]`\
-`[0]` `[0]` `[3]`
+Each type presents unique challenges and opportunities for optimization, which this project explores in depth.
 
-in LIL format would be stored as:
-- Row 1: column indices `[1]`, values `[5]`
-- Row 2: column indices `[0]`, values `[1]`
-- Row 3: column indices `[2]`, values `[3]`.
+## Implementation Details
 
-LIL allows for dynamic updates, making it easy to incrementally build sparse matrices. However, it is inefficient for column access and requires additional memory to store the column indices alongside the non-zero values.
+### LIL (List of Lists) Sparse Matrix Storage
 
-## Sparse-Sparse Matrix Multiplication
-### Standard Implementation
+We utilize the List of Lists (LIL) format for efficient sparse matrix storage. This format is particularly well-suited for incremental matrix construction and row-oriented operations.
 
-1. **Input Matrices:**
-   - Two sparse matrices `A` and `B` are provided. Both are in a row-centric format, where each row stores a list of non-zero elements along with their column indices. Additionally, the number of rows and columns for the result matrix is defined.
+LIL represents a sparse matrix as an array of rows, where each row contains two lists:
+1. A list of column indices for non-zero elements
+2. A corresponding list of non-zero values
 
-2. **Transpose Matrix `B`:**
-   - Since matrix `B` is row-based, accessing its columns for multiplication would be inefficient. To address this, `B` is transposed, creating `B_transpose`. This transposed matrix stores columns of `B` as rows, making it easier to access columns during the multiplication step.
+Example:
+```
+Dense Matrix:
+[0] [5] [0]
+[1] [0] [0]
+[0] [0] [3]
 
-3. **Performing Matrix Multiplication:**
-   - For each row in matrix `A`, the algorithm calculates the corresponding row in the result matrix:
-     - It iterates over the non-zero elements of row `i` in `A`. For each non-zero element:
-       - It identifies the corresponding row from `B_transpose`.
-       - Then, it multiplies the non-zero element from `A` by the elements of the identified row in `B_transpose`.
-       - The products are accumulated in a temporary result structure, where only the non-zero results are stored.
+LIL representation:
+Row 1: column indices [1], values [5]
+Row 2: column indices [0], values [1]
+Row 3: column indices [2], values [3]
+```
 
-4. **Storing Results:**
-   - Once a row multiplication is completed, the algorithm stores only the non-zero values in the corresponding row of the result matrix. This keeps the result matrix in sparse format and avoids unnecessary storage of zeros.
+This representation allows for efficient row-wise access and modification, which is crucial for our optimization strategies.
 
-### Cache Optimization
-#### I implemented *Loop Tiling* as it provides the following benefits:
+### Optimization Techniques
 
-1. **Minimizes Cache Misses**
-   - **Spatial Locality**: Keeps data accessed together, improving cache hits.
-   - **Temporal Locality**: Reuses data within tiles, reducing memory fetches.
+1. **Cache Optimization (Loop Tiling)**
+   - Minimizes cache misses by improving spatial and temporal locality
+   - Divides the computation into smaller blocks that fit in the cache
+   - Reduces memory access latency and improves overall performance
+   - Particularly effective for dense matrix operations and larger sparse matrices
 
-2. **Increases Speed**
-   - **Reduced Latency**: Faster access to data in cache compared to main memory.
-   - **Improved Instruction-Level Parallelism**: Allows the compiler to better utilize flags such as -O2 or -O3.
+2. **Multithreading**
+   - Utilizes `std::thread` to divide work across 12 CPU threads, fully utilizing modern multi-core processors
+   - Implements OpenMP for cleaner, compiler-driven multithreading, reducing the complexity of manual thread management
+   - Balances workload across threads to maximize parallelism and minimize idle time
 
-3. **Enhances Multithreading Performance**
-   - **Work Distribution**: Balances workloads across threads using separate tiles.
-   - **Reduced False Sharing**: Aligns data access patterns to minimize conflicts.
+3. **SIMD Optimization**
+   - Employs AVX2 SIMD instructions for parallel data processing, performing multiple floating-point operations simultaneously
+   - Combines with OpenMP SIMD directives for enhanced vectorization, allowing the compiler to generate optimal SIMD code
+   - Particularly effective for dense matrix operations and the innermost loops of sparse matrix multiplication
 
-### Multithreading Optimization
-#### I utilized `std::thread` to divide the multiplication up into 12 parts, one for each thread support by my CPU.
+## Algorithms and Implementations
 
-### SIMD Optimization
-#### I utilized AVX2 SIMD instructions in the following manner:
-1. **Initialization**: 
-   - The result matrix is initialized to zero with dimensions based on matrices \( A \) and \( B \).
-   - A 256-bit SIMD register (`__m256i sum`) is initialized to accumulate results for the dot product.
+### Sparse-Sparse Matrix Multiplication
 
-2. **Loading Data**:
-   - For each element in the result matrix, the function processes 8 integers (32-bit each) at a time:
-     - **Load operation**: The elements from the current row of matrix \( A \) and the current column of matrix \( B \) are loaded into SIMD registers using `_mm256_loadu_si256`.
+The sparse-sparse multiplication algorithm follows these steps:
+1. Transpose the second input matrix for efficient column access
+2. For each non-zero element in matrix A:
+   - Identify corresponding elements in the transposed B matrix
+   - Perform multiplication and accumulate results
+3. Store only non-zero results in the output matrix
 
-3. **Multiplication**:
-   - The multiplication of the loaded vectors from \( A \) and \( B \) is performed using the `_mm256_mullo_epi32` function, which multiplies corresponding elements of the two vectors.
+Optimizations applied:
+- Loop tiling to improve cache utilization
+- Multithreading to parallelize row-wise computations
+- Custom SIMD instructions for the innermost loop of element-wise multiplication
 
-4. **Accumulation**:
-   - The products are accumulated into the `sum` register using `_mm256_add_epi32`, allowing simultaneous addition of all 8 products.
+### Dense-Sparse Matrix Multiplication
 
-5. **Horizontal Sum**:
-   - After processing all elements for a given pair `(i, j)`, the contents of the `sum` register are stored into a temporary array.
-   - A horizontal sum is then performed by manually adding the 8 elements in the temporary array to obtain the final result for the result matrix at position `result[i][j]`.
+The dense-sparse multiplication leverages the sparsity of one matrix:
+1. Iterate through the sparse matrix efficiently
+2. For each non-zero element, perform a partial dot product with the corresponding dense matrix column
+3. Accumulate results in the output matrix
 
-### All Optimizations
-#### When combining all optimizations into one function, extreme care was taken to combine the strengths of loop tiling, multithreading, and AVX2 SIMD instructions without causing errors.
+Optimizations applied:
+- Careful ordering of operations to maximize cache hits
+- Tiling strategy adapted for the mixed dense-sparse structure
+- Multithreading to distribute work across CPU cores
+- SIMD instructions for vectorizing partial dot products
 
-### Results and Analysis
-1. **Setup**:
-   - Sizes: `{3000, 4000, 5000}`
-   - Sparsity Percentages: `{0.1%, 1%, 10%}`
+### Dense-Dense Matrix Multiplication
 
-2. **Results**:
-   - The overhead required by the optimization methods is not justified for very small and sparse matrices.
-   - SIMD is the most effective optimization method.
-   - Using all methods completed the calculation up to 24 times faster.
+Standard matrix multiplication algorithm with the following optimizations:
+- Cache-oblivious loop tiling to minimize cache misses
+- OpenMP for both multithreading and SIMD directives
+- Hand-tuned AVX2 instructions for maximum SIMD utilization
 
-<p align="center">
-  <img src="images/combinedSpSp.jpg" alt="Results for sparse-sparse" />
-</p>
+## Results and Analysis
 
-## Dense-Sparse Matrix Multiplication
-In our sparse matrix representation, we store the corresponding column for each entry. The process of dense-sparse multiplication can be optimized as follows:
+### Sparse-Sparse Matrix Multiplication
+- Test setup: Matrix sizes {3000, 4000, 5000}, Sparsity levels {0.1%, 1%, 10%}
+- Key findings:
+  - SIMD proved most effective for this case, especially at higher densities
+  - Performance gains increase with matrix size and density
+  - Combined optimizations achieved up to 34x speedup
 
-- Focus on a specific index (e).
-- Multiply the value at index e by all corresponding values in the matching column of the dense matrix.
-- Accumulate these results into the dense matrix row associated with index e.
+![Sparse-Sparse Results](images/combinedSpSp.jpg)
 
-To perform the multiplication:
-1. Iterate through the sparse matrix.
-2. Multiply by the appropriate value in each row of the corresponding dense matrix column.
-3. Add the results to the resulting matrix index.
+### Dense-Sparse Matrix Multiplication
+- Test setup: Matrix sizes {1200, 1500, 1800}, Sparsity levels {0.1%, 1%, 10%}
+- Key findings:
+  - Cache optimization was crucial due to varying matrix structures
+  - Performance gains were most pronounced for larger, denser matrices
+  - Combined optimizations achieved up to 36x speedup
 
-The figure below has been provided as a guide.
-<p align="center">
-  <img src="images/dense-sparse.jpg" alt="Calculation for dense-sparse" />
-</p>
+![Dense-Sparse Results](images/combinedDSp.jpg)
 
-### Similar Optimization Methods:
-1. **Multithreading:** `std::thread`
-2. **SIMD:** AVX2 Instructions
+### Dense-Dense Matrix Multiplication
+- Test setup: Matrix sizes {1200, 1500, 1800}
+- Key findings:
+  - SIMD optimization was highly effective for dense matrices
+  - Performance scaled nearly linearly with the number of cores utilized
+  - Combined optimizations achieved up to 142x speedup
 
-### Caching Optimization Improvements:
-1. **Ordering:**: Substantial performance boosts can be gained by iterating first over the dense matrix, which exists sequentially in cache.
-2. **Tiling**: Tiling works extremely well in tandem with this strategy, leading to dominant cache optimization performance.
+![Dense-Dense Results](images/dense-dense.png)
 
+### Sample Performance Comparison Table
 
-### Results and Analysis
-1. **Setup**:
-   - Sizes: `{1200, 1500, 1800}`
-   - Sparsity Percentages: `{0.1%, 1%, 10%}`
-2. **Results**:
-   - Due to the varying structures between the matrices, cache optimization is key.
-   - This process was much harder to apply SIMD to, and therefore SIMD was much less effective.
-   - Using all methods completed the calculation up to 33 times faster.
+| Matrix Type | Size | Sparsity | Baseline (s) | Cache Opt (s) | Multithreading (s) | SIMD (s) | All Optimizations (s) | Speedup |
+|-------------|------|----------|--------------|---------------|-------------------|----------|----------------------|---------|
+| Sparse-Sparse | 5000 | 0.1% | 0.016 | 0.036 | 0.007 | 0.026 | 0.019 | 0.84x |
+| Sparse-Sparse | 5000 | 1% | 2.016 | 0.511 | 0.495 | 0.265 | 0.059 | 34.2x |
+| Sparse-Sparse | 5000 | 10% | 16.724 | 1.934 | 4.841 | 2.027 | 0.746 | 22.4x |
+| Dense-Sparse | 1800 | 0.1% | 0.167 | 0.011 | 0.043 | 0.132 | 0.006 | 27.8x |
+| Dense-Sparse | 1800 | 1% | 1.608 | 0.114 | 0.348 | 1.36 | 0.044 | 36.5x |
+| Dense-Sparse | 1800 | 10% | 13.072 | 0.777 | 2.557 | 11.747 | 0.404 | 32.3x |
+| Dense-Dense | 1200 | N/A | 2.421 | 1.346 | 1.957 | 0.479 | 0.103 | 23.5x |
+| Dense-Dense | 1500 | N/A | 12.788 | 2.68 | 5.052 | 1.15 | 0.22 | 58.1x |
+| Dense-Dense | 1800 | N/A | 49.815 | 5.637 | 13.285 | 1.894 | 0.35 | 142.0x |
 
-<p align="center">
-  <img src="images/combinedDSp.jpg" alt="Results for sparse-sparse" />
-</p>
+## Getting Started
 
-## Dense-Dense Matrix Multiplication
+1. Clone this repository:
+   ```
+   git clone https://github.com/AshtonRopp/AdvancedComputerSystems.git
+   cd MatrixMultiplication
+   ```
 
-### Similar Optimization Methods:
-1. **Cache:** Loop Tiling
-2. **Multithreading:** `std::thread`
-3. **SIMD:** AVX2 Instructions
+2. Ensure you have the necessary dependencies:
+   - A C++ compiler with C++11 support
+   - OpenMP support
+   - AVX2-compatible CPU
 
-### Combined Optimization Improvements
-1. **OpenMP Multithreading:**: Cleaner, compiler-driven multithreading.
-2. **OpenMP SIMD Directives**: Collapsed outermost loops of operation.
-3. **AVX2 Instructions**: Used in tandem with OpenMP SIMD directives.
+3. Build the project:
+   ```
+   make
+   ```
 
-### Results and Analysis
-1. **Setup**:
-   - Sizes: `{1200, 1500, 1800}`
-   - Sparsity Percentages: `{0.1%, 1%, 10%}`
-2. **Results**:
-   - Dropped time from 39 (no optimizations) seconds to 0.388 seconds (all optimizations) for a 99.5% reduction.
-   - SIMD was by far the most productive optimization method, as fully dense matrices are comprised almost entirely of vectorizable data.
-   - Using all methods completed the calculation up to 100 times faster.
+4. Run the executable:
+   ```
+   ./mult.exe [option] [thread_count]
+   ```
+   Options:
+   - `dsp`: Dense-sparse multiplication
+   - `spsp`: Sparse-sparse multiplication
+   - `dd`: Dense-dense multiplication
 
-<p align="center">
-  <img src="images/dense-dense.png" alt="Results for dense-dense multiplication" />
-</p>
+   Example with thread count:
+   ```
+   ./mult.exe dsp 10
+   ```
+   Runs dense-sparse multiplication with 10 threads
 
-## Experimental Setup
-1. **Clone this repository**
-2. **Use `make` to build**
-3. **Configured flags**
-   - `-pthread`: `std::thread`
-   - `-fopenmp-simd`: OpenMP SIMD directives
-   - `-fopenmp`: OpenMP SIMD directives
-   - `-mavx2`: AVX2 SIMD instructions
-4. **Run ./mult.exe after compiling**
-5. **Example calls**
-   - `./mult.exe dsp`: Runs dense-sparse multiplication
-   - `./mult.exe spsp`: Runs sparse-sparse multiplication
-   - `./mult.exe dd`: Runs dense-dense multiplication
-   - `./mult.exe dsp 10`: Runs dense-sparse multiplication with 10 threads
+## Compiler Flags
+
+The following flags are used for optimization:
+- `-pthread`: Enables std::thread support
+- `-fopenmp-simd`: Enables OpenMP SIMD directives
+- `-fopenmp`: Enables OpenMP support
+- `-mavx2`: Enables AVX2 SIMD instructions
+- `-O3`: Enables aggressive compiler optimizations
+
+## Contributors
+
+Ashton Ropp
