@@ -1,2 +1,2 @@
-# AdvancedComputerSystems
-Course projects for ECSE-6320 at RPI.
+# Advanced Computer Systems Portfolio
+This repo includes course projects for ECSE-6320 at RPI. These projects cover topics such as cache memory, multithreading, SIMD instructions, and sparse matrices.
