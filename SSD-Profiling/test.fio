@@ -1,0 +1,13 @@
+; Testing Random Operations
+
+
+[global]
+name=random-write-test
+ioengine=libaio
+direct=1
+numjobs=1
+runtime=60
+
+[task1]
+ioengine=libaio
+iodepth=16
