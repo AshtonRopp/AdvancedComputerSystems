@@ -25,13 +25,17 @@ if __name__ == "__main__":
     y1_2 = data['Write IOPs']
     y2_2 = data['Read IOPs']
 
-    # Create a figure and axis
-    fig, ax1 = plt.subplots()
+    print(y1+y2, y1_2+y2_2)
+
+  
 
     if sys.argv[1].strip() == "plot_both":
+        # Create a figure and axis
+        fig, ax1 = plt.subplots()
+
         # Plot the first Y-axis data
         ax1.set_xlabel(x_header)
-        ax1.set_ylabel('Read and Write Speed (GiB/s)')
+        ax1.set_ylabel('Read and Write Speed (MiB/s)')
         ax1.plot(x, y1, label='Read Speed', color='tab:blue', marker='o')
         ax1.plot(x, y2, label='Write Speed', color='tab:orange', marker='o')
         # ax1.tick_params(axis='y', )
@@ -56,26 +60,36 @@ if __name__ == "__main__":
         plt.close(fig)
 
     elif sys.argv[1].strip() == "combine_both":
-        # Plot the first Y-axis data
+        # Create a figure with two subplots (1 row, 2 columns)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+
+        # Plot the first subplot (Read and Write Speed)
         ax1.set_xlabel(x_header)
-        ax1.set_ylabel('Read and Write Speed (GiB/s)')
-        ax1.plot(x, (y1+y2), label='Read/Write Speed', color='tab:blue', marker='o')
-        ax1.tick_params(axis='y', labelcolor='tab:blue')
+        ax1.set_ylabel('Read and Write Speed (MiB/s)')
+        ax1.plot(x, (y1 + y2), label='Read/Write Speed', color='tab:blue', marker='o')
+        ax1.tick_params(axis='y')
+        ax1.set_title('Read/Write Speed')
 
-        # Create a second Y-axis
-        ax2 = ax1.twinx()
+        # Plot the second subplot (IOPs)
+        ax2.set_xlabel(x_header)
         ax2.set_ylabel('IOPs')
-        ax2.plot(x, (y1_2 + y2_2), label='Write IOPs', color='tab:red', marker='o')
-        ax2.tick_params(axis='y', labelcolor='tab:red')
+        ax2.plot(x, (y1_2 + y2_2), label='Read/Write IOPs', color='tab:red', marker='o')
+        ax2.tick_params(axis='y')
+        ax2.set_title('Read/Write IOPs')
 
-        # Add titles
-        plt.title(x_header + ' vs Speed Metrics')
+        # Set a common title for the figure
+        fig.suptitle(x_header + ' vs Speed and IOPs Metrics')
 
-        # Add legends below the figure
-        fig.legend(loc='lower center', bbox_to_anchor=(0.5, -0.1), ncol=2)
+        # Add legends below each subplot
+        ax1.legend(loc='upper left')
+        ax2.legend(loc='upper left')
+
+        # Adjust layout to prevent overlapping
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
 
         # Save the plot as an image file (e.g., PNG format)
         plt.savefig('plot.png', format='png', dpi=300, bbox_inches='tight')
 
         # Optionally, you can clear the figure
         plt.close(fig)
+
