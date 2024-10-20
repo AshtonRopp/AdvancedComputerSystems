@@ -6,8 +6,7 @@ name=random-write-test
 ioengine=libaio
 direct=1
 numjobs=1
-runtime=60
+runtime=120
 
 [task1]
 ioengine=libaio
-iodepth=16
