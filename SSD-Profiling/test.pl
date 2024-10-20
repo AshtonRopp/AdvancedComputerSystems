@@ -8,9 +8,8 @@ my $task = $ARGV[0];
 my $experiment = $ARGV[1];
 
 my $count = 1024;   # 1 GiB = 1024 MiB
-my $write_path = '/mnt/c/tmp/cache_test_write';
-my $read_path = '/mnt/c/tmp/cache_test_read';
-my $num_runs = 5;  # Number of iterations to run each test
+my $write_path = '/home/ashton/tmp/cache_test_write';
+my $read_path = '/home/ashton/tmp/cache_test_read';
 
 if (scalar @ARGV == 0) {
     print("No input provided \n");
@@ -38,6 +37,7 @@ elsif ($task eq 'run') {
     my $half_size = int(1024*1024*1024 / 2);
 
     if ($experiment eq 'data_access') {
+        my $num_runs = 2;  # Number of iterations to run each test
         $graphCMD = 'plot_both';
         $x_column = "Access-Sizes";
         @x_data = (4*1024, 16*1024, 32*1024, 128*1024);
@@ -47,7 +47,7 @@ elsif ($task eq 'run') {
 
             for (1 .. $num_runs) {  # Run the test $num_runs times
                 # Run read test
-                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=read --size=$half_size --bs=$x_data[$i]");
+                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randread --size=$half_size --bs=$x_data[$i] --iodepth=16");
                 my $data = decode_json_file('output.json');
 
                 foreach my $job (@{$data->{'jobs'}}) {
@@ -56,7 +56,7 @@ elsif ($task eq 'run') {
                 }
 
                 # Run write test
-                system("fio test.fio --output-format=json --output=output.json --filename=$write_path --rw=write --size=$half_size --bs=$x_data[$i]");
+                system("fio test.fio --output-format=json --output=output.json --filename=$write_path --rw=randwrite --size=$half_size --bs=$x_data[$i] --iodepth=16");
                 $data = decode_json_file('output.json');
 
                 foreach my $job (@{$data->{'jobs'}}) {
@@ -65,7 +65,7 @@ elsif ($task eq 'run') {
                 }
             }
 
-            # Calculate and store the average
+            # Calculate and store the averages
             push(@read_IOPs, $read_iops_sum / $num_runs);
             push(@read_speed, $read_speed_sum / $num_runs);
             push(@write_IOPs, $write_iops_sum / $num_runs);
@@ -74,6 +74,7 @@ elsif ($task eq 'run') {
     }
 
     elsif ($experiment eq 'rw_cent') {
+        my $num_runs = 3;  # Number of iterations to run each test
         my $full_size = 1024*1024*1024; # 1 GiB
         @x_data = (.0, .25, .50, .75, 1.0);
         $graphCMD = 'combine_both';
@@ -86,7 +87,7 @@ elsif ($task eq 'run') {
 
             for (1 .. $num_runs) {
                 # Run read test
-                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=read --size=1GiB --bs=16MiB");
+                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randread --size=1GiB --bs=16MiB --iodepth=16");
                 my $data = decode_json_file('output.json');
 
                 foreach my $job (@{$data->{'jobs'}}) {
@@ -95,7 +96,7 @@ elsif ($task eq 'run') {
                 }
 
                 # Run write test
-                system("fio test.fio --output-format=json --output=output.json --filename=$write_path --rw=write --size=1GiB --bs=16MiB");
+                system("fio test.fio --output-format=json --output=output.json --filename=$write_path --rw=randwrite --size=1GiB --bs=16MiB --iodepth=16");
                 $data = decode_json_file('output.json');
 
                 foreach my $job (@{$data->{'jobs'}}) {
@@ -104,7 +105,45 @@ elsif ($task eq 'run') {
                 }
             }
 
-            # Calculate and store the average
+            # Calculate and store the averages
+            push(@read_IOPs, $read_iops_sum / $num_runs);
+            push(@read_speed, $read_speed_sum / $num_runs);
+            push(@write_IOPs, $write_iops_sum / $num_runs);
+            push(@write_speed, $write_speed_sum / $num_runs);
+        }
+    }
+
+    elsif ($experiment eq 'queue_depth') {
+        my $num_runs = 8    ;  # Number of iterations to run each test
+        my $full_size = 1024*1024*1024; # 1 GiB
+        @x_data = (1, 2, 4, 8, 16, 64, 128);
+        $graphCMD = 'combine_both';
+        $x_column = "Queue-Depth";
+
+        for my $i (0 .. $#x_data) {
+            my ($read_iops_sum, $read_speed_sum, $write_iops_sum, $write_speed_sum) = (0, 0, 0, 0);
+
+            for (1 .. $num_runs) {
+                # Run read test
+                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randread --size=$half_size --bs=8MiB --iodepth=$x_data[$i]");
+                my $data = decode_json_file('output.json');
+
+                foreach my $job (@{$data->{'jobs'}}) {
+                    $read_iops_sum += $job->{'read'}->{'iops'} * 0.5;
+                    $read_speed_sum += $job->{'read'}->{'io_bytes'} / $job->{'read'}->{'runtime'} / 1024 / 1024 * 1000 * 0.5;
+                }
+
+                # Run write test
+                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randwrite --size=$half_size --bs=8MiB --iodepth=$x_data[$i]");
+                $data = decode_json_file('output.json');
+
+                foreach my $job (@{$data->{'jobs'}}) {
+                    $write_iops_sum += $job->{'write'}->{'iops'} * 0.5;
+                    $write_speed_sum += $job->{'write'}->{'io_bytes'} / $job->{'write'}->{'runtime'} / 1024 / 1024 * 1000 * 0.5;
+                }
+            }
+
+            # Calculate and store the averages
             push(@read_IOPs, $read_iops_sum / $num_runs);
             push(@read_speed, $read_speed_sum / $num_runs);
             push(@write_IOPs, $write_iops_sum / $num_runs);

@@ -13,7 +13,7 @@ if __name__ == "__main__":
         print("plot_average: averages read and write together --> 2 lines")
         print("Second CLI arg is header of x data!")
         exit()
-    
+
     # Load the CSV file
     data = pd.read_csv('data.csv')
 
@@ -25,10 +25,6 @@ if __name__ == "__main__":
     y1_2 = data['Write IOPs']
     y2_2 = data['Read IOPs']
 
-    print(y1+y2, y1_2+y2_2)
-
-  
-
     if sys.argv[1].strip() == "plot_both":
         # Create a figure and axis
         fig, ax1 = plt.subplots()
@@ -38,14 +34,12 @@ if __name__ == "__main__":
         ax1.set_ylabel('Read and Write Speed (MiB/s)')
         ax1.plot(x, y1, label='Read Speed', color='tab:blue', marker='o')
         ax1.plot(x, y2, label='Write Speed', color='tab:orange', marker='o')
-        # ax1.tick_params(axis='y', )
 
         # Create a second Y-axis
         ax2 = ax1.twinx()
         ax2.set_ylabel('IOPs')
         ax2.plot(x, y1_2, label='Write IOPs', color='tab:red', linestyle='--', marker='s')
         ax2.plot(x, y2_2, label='Read IOPs', color='tab:green', linestyle='--', marker='s')
-        # ax2.tick_params(axis='y', labelcolor='tab:blk')
 
         # Add titles
         plt.title(x_header + ' vs Speed Metrics')
@@ -92,4 +86,3 @@ if __name__ == "__main__":
 
         # Optionally, you can clear the figure
         plt.close(fig)
-
