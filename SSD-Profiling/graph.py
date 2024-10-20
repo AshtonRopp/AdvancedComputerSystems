@@ -7,45 +7,45 @@ if __name__ == "__main__":
         print(i)
 
     # Check for proper number of input args
-    if len(sys.argv) != 3:
-        print("Please input a graph type! Valid options are:")
-        print("plot_both: Plots both speed, IOPs for read and write --> 4 lines")
-        print("plot_average: averages read and write together --> 2 lines")
-        print("Second CLI arg is header of x data!")
+    if len(sys.argv) != 2:
+        print("Incorrect CLI arguments!")
         exit()
 
     # Load the CSV file
     data = pd.read_csv('data.csv')
 
     # Extract data from the DataFrame
-    x_header = sys.argv[2].strip()
+    x_header = data.keys()[0]
     x = data[x_header]
     y1 = data['Read Speed']
     y2 = data['Write Speed']
-    y1_2 = data['Write IOPs']
-    y2_2 = data['Read IOPs']
+    y1_2 = data['Read Latency']/1e6  # Convert to ms from ns
+    y2_2 = data['Write Latency']/1e6 # Convert to ms from ns
 
     if sys.argv[1].strip() == "plot_both":
-        # Create a figure and axis
-        fig, ax1 = plt.subplots()
+        # Create a figure and two subplots horizontally
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
-        # Plot the first Y-axis data
+        # Plot on the first subplot (Read and Write Speed)
         ax1.set_xlabel(x_header)
         ax1.set_ylabel('Read and Write Speed (MiB/s)')
         ax1.plot(x, y1, label='Read Speed', color='tab:blue', marker='o')
-        ax1.plot(x, y2, label='Write Speed', color='tab:orange', marker='o')
+        ax1.plot(x, y2, label='Write Speed', color='tab:red',  marker='o')
+        ax1.tick_params(axis='y')
+        ax1.legend(loc='lower right')
+        ax1.set_title('Read and Write Speed vs ' + x_header)
 
-        # Create a second Y-axis
-        ax2 = ax1.twinx()
-        ax2.set_ylabel('IOPs')
-        ax2.plot(x, y1_2, label='Write IOPs', color='tab:red', linestyle='--', marker='s')
-        ax2.plot(x, y2_2, label='Read IOPs', color='tab:green', linestyle='--', marker='s')
+        # Plot on the second subplot (Latency)
+        ax2.set_xlabel(x_header)
+        ax2.set_ylabel('Latency (ms)')
+        ax2.plot(x, y1_2, label='Read Latency', color='tab:blue', marker='o')
+        ax2.plot(x, y2_2, label='Write Latency', color='tab:red', marker='o')
+        ax2.tick_params(axis='y')
+        ax2.legend(loc='lower right')
+        ax2.set_title('Latency vs ' + x_header)
 
-        # Add titles
-        plt.title(x_header + ' vs Speed Metrics')
-
-        # Add legends below the figure
-        fig.legend(loc='lower center', bbox_to_anchor=(0.5, -0.1), ncol=2)
+        # Adjust layout to avoid overlapping
+        plt.tight_layout()
 
         # Save the plot as an image file (e.g., PNG format)
         plt.savefig('plot.png', format='png', dpi=300, bbox_inches='tight')
@@ -64,15 +64,15 @@ if __name__ == "__main__":
         ax1.tick_params(axis='y')
         ax1.set_title('Read/Write Speed')
 
-        # Plot the second subplot (IOPs)
+        # Plot the second subplot (Latency)
         ax2.set_xlabel(x_header)
-        ax2.set_ylabel('IOPs')
-        ax2.plot(x, (y1_2 + y2_2), label='Read/Write IOPs', color='tab:red', marker='o')
+        ax2.set_ylabel('Latency (ms)')
+        ax2.plot(x, (y1_2 + y2_2), label='Read/Write Latency', color='tab:red', marker='o')
         ax2.tick_params(axis='y')
-        ax2.set_title('Read/Write IOPs')
+        ax2.set_title('Read/Write Latency')
 
         # Set a common title for the figure
-        fig.suptitle(x_header + ' vs Speed and IOPs Metrics')
+        fig.suptitle(x_header + ' vs Speed and Latency Metrics')
 
         # Add legends below each subplot
         ax1.legend(loc='upper left')
