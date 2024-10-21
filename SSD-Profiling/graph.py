@@ -3,12 +3,10 @@ import matplotlib.pyplot as plt
 import sys
 
 if __name__ == "__main__":
-    for i in sys.argv:
-        print(i)
 
     # Check for proper number of input args
     if len(sys.argv) != 2:
-        print("Incorrect CLI arguments!")
+        print("Incorrect CLI arguments! See \"Getting Started\" in the project README.")
         exit()
 
     # Load the CSV file
@@ -19,8 +17,8 @@ if __name__ == "__main__":
     x = data[x_header]
     y1 = data['Read Speed']
     y2 = data['Write Speed']
-    y1_2 = data['Read Latency']/1e6  # Convert to ms from ns
-    y2_2 = data['Write Latency']/1e6 # Convert to ms from ns
+    y1_2 = data['Read Latency'] / 1e6  # Convert to ms from ns
+    y2_2 = data['Write Latency'] / 1e6 # Convert to ms from ns
 
     if sys.argv[1].strip() == "plot_both":
         # Create a figure and two subplots horizontally
