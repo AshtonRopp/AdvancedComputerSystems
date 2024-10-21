@@ -1,9 +1,7 @@
-; Testing Random Operations
+; Options common to all experiments
 
 [global]
-name=random-write-test
 direct=1
-numjobs=1
+ioengine=libaio
 
 [task1]
-ioengine=libaio

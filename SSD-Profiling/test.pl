@@ -87,7 +87,7 @@ elsif ($task eq 'run') {
     }
 
     elsif ($experiment eq 'rw_cent') {
-        my $num_runs = 3;  # Number of iterations to run each test
+        my $num_runs = 1;  # Number of iterations to run each test
 
         # Use input number of runs if specified
         if(@ARGV == 3) {
@@ -95,31 +95,31 @@ elsif ($task eq 'run') {
         }
 
         @x_data = (.0, .25, .50, .75, 1.0);
-        $graphCMD = 'combine_both';
+        $graphCMD = 'combine_rw';
         $x_column = 'Read Percentage';
 
         for my $i (0 .. $#x_data) {
             my $read_cent = $x_data[$i];
-            my $write_cent = 1 - $read_cent;
+            my $write_cent = 1.0 - $read_cent;
             my ($read_lat_sum, $read_speed_sum, $write_lat_sum, $write_speed_sum) = (0, 0, 0, 0);
 
             for (1 .. $num_runs) {
                 # Run read test
-                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randread --size=1GiB --bs=16MiB --iodepth=16");
+                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randread --size=$half_size --bs=64KiB --iodepth=32 --runtime=3 --time_based");
                 my $data = decode_json_file('output.json');
 
                 foreach my $job (@{$data->{'jobs'}}) {
                     $read_lat_sum += $job->{'read'}->{'lat_ns'}->{'mean'} * $read_cent;
-                    $read_speed_sum += $job->{'read'}->{'bw_mean'} / 1024 * $read_cent;
+                    $read_speed_sum += $job->{'read'}->{'bw'} / 1024 * $read_cent;
                 }
 
                 # Run write test
-                system("fio test.fio --output-format=json --output=output.json --filename=$write_path --rw=randwrite --size=1GiB --bs=16MiB --iodepth=16");
+                system("fio test.fio --output-format=json --output=output.json --filename=$write_path --rw=randwrite --size=$half_size --bs=64KiB --iodepth=32 --runtime=3 --time_based");
                 $data = decode_json_file('output.json');
 
                 foreach my $job (@{$data->{'jobs'}}) {
                     $write_lat_sum += $job->{'write'}->{'lat_ns'}->{'mean'} * $write_cent;
-                    $write_speed_sum += $job->{'write'}->{'bw_mean'} / 1024 * $write_cent;
+                    $write_speed_sum += $job->{'write'}->{'bw'} / 1024 * $write_cent;
                 }
             }
 
@@ -132,15 +132,15 @@ elsif ($task eq 'run') {
     }
 
     elsif ($experiment eq 'queue_depth') {
-        my $num_runs = 8;  # Number of iterations to run each test
+        my $num_runs = 5;  # Number of iterations to run each test
 
         # Use input number of runs if specified
         if(@ARGV == 3) {
             $num_runs = $input_runs;
         }
 
-        @x_data = (1, 2, 4, 8, 16, 64, 128);
-        $graphCMD = 'combine_both';
+        @x_data = (1, 4, 16, 64, 256, 1024);
+        $graphCMD = 'plot_both';
         $x_column = "Queue Depth";
 
         for my $i (0 .. $#x_data) {
@@ -148,21 +148,21 @@ elsif ($task eq 'run') {
 
             for (1 .. $num_runs) {
                 # Run read test
-                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randread --size=$half_size --bs=8MiB --iodepth=$x_data[$i]");
+                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randread --size=$half_size --bs=64KiB --iodepth=$x_data[$i]");
                 my $data = decode_json_file('output.json');
 
                 foreach my $job (@{$data->{'jobs'}}) {
-                    $read_lat_sum += $job->{'read'}->{'lat_ns'}->{'mean'} * 0.5;
-                    $read_speed_sum += $job->{'read'}->{'bw_mean'} / 1024 * 0.5;
+                    $read_lat_sum += $job->{'read'}->{'lat_ns'}->{'mean'};
+                    $read_speed_sum += $job->{'read'}->{'bw_mean'} / 1024;
                 }
 
                 # Run write test
-                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randwrite --size=$half_size --bs=8MiB --iodepth=$x_data[$i]");
+                system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=randwrite --size=$half_size --bs=64KiB --iodepth=$x_data[$i]");
                 $data = decode_json_file('output.json');
 
                 foreach my $job (@{$data->{'jobs'}}) {
-                    $write_lat_sum += $job->{'write'}->{'lat_ns'}->{'mean'} * 0.5;
-                    $write_speed_sum += $job->{'write'}->{'bw_mean'} / 1024 * 0.5;
+                    $write_lat_sum += $job->{'write'}->{'lat_ns'}->{'mean'};
+                    $write_speed_sum += $job->{'write'}->{'bw_mean'} / 1024;
                 }
             }
 
@@ -173,6 +173,25 @@ elsif ($task eq 'run') {
             push(@write_speed, $write_speed_sum / $num_runs);
         }
     }
+
+    elsif ($experiment eq 'max_perfomance') {
+        system("fio test.fio --output-format=json --output=output.json --filename=$read_path --rw=read --size=$full_size --bs=16384KiB --iodepth=128 --runtime=30 --time_based");
+        my $data = decode_json_file('output.json');
+        my $lat = 0;
+        my $bw = 0;
+
+        foreach my $job (@{$data->{'jobs'}}) {
+            $lat += $job->{'read'}->{'lat_ns'}->{'mean'}/1000;
+            $bw += $job->{'read'}->{'bw_mean'} / 1024;
+        }
+
+        # Convert from Mebibyte to Megabyte
+        $bw *= 1.04858;
+        print "\nLatency: ", $lat/1000000, " ms\n";
+        print 'Bandwidth: ', $bw, " MB/s\n";
+        exit();
+    }
+
 
     # Write results to CSV
     my $csv = Text::CSV->new({ binary => 1, auto_diag => 1 });
