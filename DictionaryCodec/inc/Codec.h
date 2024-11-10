@@ -23,10 +23,16 @@ public:
     std::vector<size_t> QueryItem(const std::string& dataItem);
 
     // Query with Prefix: Search for items matching a prefix, returning unique items and their indices
-    std::unordered_map<std::string, std::vector<size_t>> QueryByPrefix(const std::string& prefix) const;
+    std::vector<size_t> QueryByPrefix(const std::string& prefix) const;
+
+    // Helper function to perform  SIMD search for prefix matching in encoded data
+    std::vector<size_t> SIMDQueryByPrefix(const std::string& prefix) const;
 
     // Baseline Column Search (without dictionary encoding) for performance comparison
     std::vector<size_t> BaselineSearch(const std::string& dataItem);
+
+    // Baseline Column Prefix Search (without dictionary encoding) for performance comparison
+    std::vector<size_t> BaselinePrefixSearch(const std::string& dataItem);
 
     // Helper to load encoded data from file
     void LoadEncodedFile(const std::string& inputFile);
@@ -50,8 +56,8 @@ private:
     // Helper function to populate the dictionary using multiple threads
     void BuildDictionary(const std::vector<std::string>& columnData);
 
-    // Helper function to perform SIMD-based search for prefix matching in encoded data
-    std::unordered_map<std::string, std::vector<size_t>> SIMDSearchByPrefix(const std::string& prefix) const;
+    // Helper function to perform search for prefix matching in encoded data
+    std::vector<size_t> SearchByPrefix(const std::string& prefix) const;
 
     // Helper to load a column file into memory for processing
     std::vector<std::string> LoadColumnFile(const std::string& inputFile) const;

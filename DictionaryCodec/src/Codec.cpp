@@ -132,28 +132,30 @@ std::vector<size_t> DictionaryCodec::QueryItem(const std::string& dataItem) {
     return keyIndeces_[dictionary_[dataItem]];
 }
 
-// SIMD-assisted prefix search
-std::unordered_map<std::string, std::vector<size_t>> DictionaryCodec::SIMDSearchByPrefix(const std::string& prefix) const {
-    std::unordered_map<std::string, std::vector<size_t>> results;
+// Dictionary-assisted prefix search
+std::vector<size_t> DictionaryCodec::SearchByPrefix(const std::string& prefix) const {
+    std::vector<size_t> results;
     size_t prefixLen = prefix.size();
+
+    // Lock reading mutex
+    std::shared_lock lock(dictionaryMutex_);
 
     for (const auto& [key, code] : dictionary_) {
         if (key.compare(0, prefixLen, prefix) == 0) {
-            std::vector<size_t> indices;
-            for (size_t i = 0; i < encodedColumn_.size(); ++i) {
-                if (encodedColumn_[i] == code) {
-                    indices.push_back(i);
-                }
+
+            auto it = keyIndeces_.find(code);
+            if (it != keyIndeces_.end()) {
+                for (size_t i = 0; i < it->second.size(); i++)
+                    results.push_back(it->second[i]);
             }
-            results[key] = indices;
         }
     }
     return results;
 }
 
-// Query by prefix, using SIMD where applicable
-std::unordered_map<std::string, std::vector<size_t>> DictionaryCodec::QueryByPrefix(const std::string& prefix) const {
-    return SIMDSearchByPrefix(prefix);
+// Query by prefix without SIMD
+std::vector<size_t> DictionaryCodec::QueryByPrefix(const std::string& prefix) const {
+    return SearchByPrefix(prefix);
 }
 
 // Baseline column search (without dictionary encoding) for performance comparison
@@ -163,6 +165,20 @@ std::vector<size_t> DictionaryCodec::BaselineSearch(const std::string& dataItem)
     size_t len = GetDataSize();
     for (size_t i = 0; i < len; ++i) {
         if (dataColumn_[i] == dataItem) {
+            indices.push_back(i);
+        }
+    }
+    return indices;
+}
+
+// Baseline column search (without dictionary encoding) for performance comparison
+std::vector<size_t> DictionaryCodec::BaselinePrefixSearch(const std::string& prefix) {
+    std::vector<size_t> indices;
+    size_t prefixLen = prefix.size();
+
+    size_t len = GetDataSize();
+    for (size_t i = 0; i < len; ++i) {
+        if (dataColumn_[i].compare(0, prefixLen, prefix)) {
             indices.push_back(i);
         }
     }
