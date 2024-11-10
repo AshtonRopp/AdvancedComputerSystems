@@ -76,9 +76,9 @@ int main(int argc, char* argv[]) {
         // Timing the QueryItem operation
         auto startQuery = std::chrono::high_resolution_clock::now();
 
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 100; i++) {
             size_t ind = dist(rd);  // Random index
-            std::vector<size_t> queryResults = dict.QueryItem(dict.GetData(ind));
+            std::vector<size_t> queryResults = dict.QueryByPrefix(dict.GetData(ind));
         }
 
         auto endQuery = std::chrono::high_resolution_clock::now();
@@ -88,14 +88,14 @@ int main(int argc, char* argv[]) {
         // Timing the BaselineSearch operation
         auto startBaseline = std::chrono::high_resolution_clock::now();
 
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 100; i++) {
             size_t ind = dist(rd);  // Random index
-            std::vector<size_t> baselineResults = dict.BaselineSearch(dict.GetData(ind));
+            std::vector<size_t> baselineResults = dict.BaselinePrefixSearch(dict.GetData(ind));
         }
 
         auto endBaseline = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> baselineDuration = endBaseline - startBaseline;
-        std::cout << "BaselineSearch execution time: " << baselineDuration.count() << " seconds" << std::endl;
+        std::cout << "BaselinePrefixSearch execution time: " << baselineDuration.count() << " seconds" << std::endl;
     }
 
     else {
