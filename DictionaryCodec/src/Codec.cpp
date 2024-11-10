@@ -29,8 +29,8 @@ void DictionaryCodec::LoadEncodedFile(const std::string& inputFile) {
     std::cout << "Loading file." << std::endl;
     std::ifstream file(inputFile);
 
-    unsigned int ind = 0;
-    int keyVal;
+    size_t ind = 0;
+    size_t keyVal;
     std::string dataStr;
 
     file >> dataSize_; // Load first line, size of data
@@ -59,7 +59,7 @@ bool DictionaryCodec::WriteEncodedColumnFile(const std::string& outputFile, cons
     if (!file.is_open()) return false;
 
     // Write dictionary --> format: key data
-    for (unsigned int i = 0; i < encodedColumn_.size(); i++) {
+    for (size_t i = 0; i < encodedColumn_.size(); i++) {
         file << encodedColumn_[i] << "\n" << columnData[i] << "\n";
     }
     file.close();
@@ -118,8 +118,8 @@ bool DictionaryCodec::EncodeColumnFile(const std::string& inputFile, const std::
 }
 
 // Query: Check if a data item exists in the encoded column, return indices if found
-std::vector<unsigned int> DictionaryCodec::QueryItem(const std::string& dataItem) {
-    std::vector<unsigned int> indices;
+std::vector<size_t> DictionaryCodec::QueryItem(const std::string& dataItem) {
+    std::vector<size_t> indices;
 
     std::shared_lock lock(dictionaryMutex_);
 
@@ -157,8 +157,8 @@ std::unordered_map<std::string, std::vector<size_t>> DictionaryCodec::QueryByPre
 }
 
 // Baseline column search (without dictionary encoding) for performance comparison
-std::vector<unsigned int> DictionaryCodec::BaselineSearch(const std::string& dataItem) {
-    std::vector<unsigned int> indices;
+std::vector<size_t> DictionaryCodec::BaselineSearch(const std::string& dataItem) {
+    std::vector<size_t> indices;
 
     size_t len = GetDataSize();
     for (size_t i = 0; i < len; ++i) {
