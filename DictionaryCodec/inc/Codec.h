@@ -19,7 +19,7 @@ public:
     bool EncodeColumnFile(const std::string& inputFile, const std::string& outputFile);
 
     // Query: Check if a data item exists in the encoded column, and return indices if it does
-    std::vector<size_t> QueryItem(const std::string& dataItem) const;
+    std::vector<unsigned int> QueryItem(const std::string& dataItem);
 
     // Query with Prefix: Search for items matching a prefix, returning unique items and their indices
     std::unordered_map<std::string, std::vector<size_t>> QueryByPrefix(const std::string& prefix) const;
@@ -27,11 +27,24 @@ public:
     // Baseline Column Search (without dictionary encoding) for performance comparison
     std::vector<size_t> BaselineSearch(const std::string& dataItem, const std::string& inputFile);
 
+    // Helper to load encoded data from file
+    void LoadEncodedFile(const std::string& inputFile);
+
+    // Getter for dataColumn_
+    const std::string& GetData(size_t index) const { return dataColumn_[index]; }
+
+    // Returns size of dataColumn_
+    size_t GetDataSize() const { return dataColumn_.size(); }
+
+
 private:
     // Dictionary and encoded data storage
-    std::unordered_map<std::string, int> dictionary_;    // Maps data items to unique integer codes
-    std::vector<int> encodedColumn_;                     // Encoded column data as integers
-    mutable std::shared_mutex dictionaryMutex_;          // Mutex for thread-safe access to dictionary
+    std::unordered_map<std::string, int> dictionary_;               // Maps data items to unique integer codes
+    std::unordered_map<int, std::vector<unsigned int>> keyIndeces_; // Maps keys to indeces
+    std::vector<std::string> dataColumn_;                                    // Unencoded data
+    std::vector<int> encodedColumn_;                                // Encoded column data as integers
+    mutable std::shared_mutex dictionaryMutex_;                     // Mutex for thread-safe access to dictionary
+    mutable std::shared_mutex keyIndecesMutex_;                     // Mutex for thread-safe access to keyIndeces map
 
     // Helper function to populate the dictionary using multiple threads
     void BuildDictionary(const std::vector<std::string>& columnData);
@@ -44,6 +57,7 @@ private:
 
     // Helper to write the dictionary and encoded column to a file
     bool WriteEncodedColumnFile(const std::string& outputFile, const std::vector<std::string>& columnData) const;
+
 };
 
 #endif // DICTIONARY_CODEC_H

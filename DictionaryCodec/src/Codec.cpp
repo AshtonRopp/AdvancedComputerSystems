@@ -18,7 +18,32 @@ std::vector<std::string> DictionaryCodec::LoadColumnFile(const std::string& inpu
     while (std::getline(file, line)) {
         columnData.push_back(line);
     }
+
+    file.close();
     return columnData;
+}
+
+
+// Helper to load an encoded file into memory for processing
+void DictionaryCodec::LoadEncodedFile(const std::string& inputFile) {
+    std::cout << "Loading file." << std::endl;
+    std::ifstream file(inputFile);
+
+    unsigned int ind = 0;
+    int keyVal;
+    std::string dataStr;
+
+    while (file >> keyVal) {
+        keyIndeces_[keyVal].push_back(ind);
+        file >> dataStr;
+        dictionary_[dataStr] = keyVal;
+        dataColumn_.push_back(dataStr);
+
+        ind++;
+    }
+
+    file.close();
+
 }
 
 // Helper to write the dictionary and encoded column to a file
@@ -30,19 +55,9 @@ bool DictionaryCodec::WriteEncodedColumnFile(const std::string& outputFile, cons
 
     // Write dictionary --> format: key data
     for (unsigned int i = 0; i < encodedColumn_.size(); i++) {
-        file << encodedColumn_[i] << " " + columnData[i] << "\n";
+        file << encodedColumn_[i] << "\n" << columnData[i] << "\n";
     }
-    // file << "Dictionary:\n";
-    // for (const auto& [key, value] : dictionary_) {
-    //     file << key << " " << value << "\n";
-    // }
-
-    // // Write encoded column data
-    // file << "EncodedColumn:\n";
-    // for (const auto& code : encodedColumn_) {
-    //     file << code << "\n";
-    // }
-    // file << "\n";
+    file.close();
 
     return true;
 }
@@ -98,20 +113,19 @@ bool DictionaryCodec::EncodeColumnFile(const std::string& inputFile, const std::
 }
 
 // Query: Check if a data item exists in the encoded column, return indices if found
-std::vector<size_t> DictionaryCodec::QueryItem(const std::string& dataItem) const {
-    std::vector<size_t> indices;
+std::vector<unsigned int> DictionaryCodec::QueryItem(const std::string& dataItem) {
+    std::vector<unsigned int> indices;
 
     std::shared_lock lock(dictionaryMutex_);
+    std::shared_lock lock2(keyIndecesMutex_);
+
     auto it = dictionary_.find(dataItem);
     if (it == dictionary_.end()) return indices;
 
-    int code = it->second;
-    for (size_t i = 0; i < encodedColumn_.size(); ++i) {
-        if (encodedColumn_[i] == code) {
-            indices.push_back(i);
-        }
-    }
-    return indices;
+    auto it2 = keyIndeces_.find(it->second);
+    if (it2 == keyIndeces_.end()) return indices;
+
+    return keyIndeces_[dictionary_[dataItem]];
 }
 
 // SIMD-assisted prefix search
