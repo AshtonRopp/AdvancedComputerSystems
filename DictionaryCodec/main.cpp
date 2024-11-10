@@ -24,10 +24,18 @@ int main(int argc, char* argv[]) {
         dict.LoadEncodedFile("src/Output.txt");
 
         size_t maxIndex = dict.GetDataSize();
+        
 
         for(int i = 0; i < 10000; i++) {
-            std::cout << "Querying" << std::endl;
-            dict.QueryItem(dict.GetData(rd()%maxIndex));
+            std::vector<unsigned int> queryResults = dict.QueryItem(dict.GetData(rd()%maxIndex));
+            std::vector<unsigned int> baselineResults = dict.BaselineSearch(dict.GetData(rd()%maxIndex));
+
+            std::cout << baselineResults.size() << " " << queryResults.size() << std::endl;
+
+        }
+
+
+        for(int i = 0; i < 10000; i++) {
         }
 
     }

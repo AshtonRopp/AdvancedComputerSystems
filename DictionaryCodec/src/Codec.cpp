@@ -33,11 +33,15 @@ void DictionaryCodec::LoadEncodedFile(const std::string& inputFile) {
     int keyVal;
     std::string dataStr;
 
+    file >> dataSize_; // Load first line, size of data
+
+    dataColumn_ = std::make_unique<std::string[]>(dataSize_);
+
     while (file >> keyVal) {
         keyIndeces_[keyVal].push_back(ind);
         file >> dataStr;
         dictionary_[dataStr] = keyVal;
-        dataColumn_.push_back(dataStr);
+        dataColumn_[ind] = dataStr;
 
         ind++;
     }
@@ -51,6 +55,7 @@ bool DictionaryCodec::WriteEncodedColumnFile(const std::string& outputFile, cons
     std::cout << "Writing file." << std::endl;
 
     std::ofstream file(outputFile);
+    file << columnData.size() << "\n"; // First line is size of data
     if (!file.is_open()) return false;
 
     // Write dictionary --> format: key data
@@ -117,7 +122,6 @@ std::vector<unsigned int> DictionaryCodec::QueryItem(const std::string& dataItem
     std::vector<unsigned int> indices;
 
     std::shared_lock lock(dictionaryMutex_);
-    std::shared_lock lock2(keyIndecesMutex_);
 
     auto it = dictionary_.find(dataItem);
     if (it == dictionary_.end()) return indices;
@@ -153,12 +157,12 @@ std::unordered_map<std::string, std::vector<size_t>> DictionaryCodec::QueryByPre
 }
 
 // Baseline column search (without dictionary encoding) for performance comparison
-std::vector<size_t> DictionaryCodec::BaselineSearch(const std::string& dataItem, const std::string& inputFile) {
-    std::vector<size_t> indices;
-    auto columnData = LoadColumnFile(inputFile);
+std::vector<unsigned int> DictionaryCodec::BaselineSearch(const std::string& dataItem) {
+    std::vector<unsigned int> indices;
 
-    for (size_t i = 0; i < columnData.size(); ++i) {
-        if (columnData[i] == dataItem) {
+    size_t len = GetDataSize();
+    for (size_t i = 0; i < len; ++i) {
+        if (dataColumn_[i] == dataItem) {
             indices.push_back(i);
         }
     }
