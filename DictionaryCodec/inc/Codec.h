@@ -43,7 +43,6 @@ public:
     // Returns size of dataColumn_
     size_t GetDataSize() const { return dataSize_; }
 
-
 private:
     // Dictionary and encoded data storage
     std::unordered_map<std::string, size_t> dictionary_;          // Maps data items to unique integer codes

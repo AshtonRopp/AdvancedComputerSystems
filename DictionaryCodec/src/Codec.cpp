@@ -6,6 +6,7 @@
 #include <iostream>
 #include <thread>
 #include <immintrin.h>  // For SIMD
+#include <future>
 
 DictionaryCodec::DictionaryCodec() {}
 
@@ -22,7 +23,6 @@ std::vector<std::string> DictionaryCodec::LoadColumnFile(const std::string& inpu
     file.close();
     return columnData;
 }
-
 
 // Helper to load an encoded file into memory for processing
 void DictionaryCodec::LoadEncodedFile(const std::string& inputFile) {
@@ -47,7 +47,6 @@ void DictionaryCodec::LoadEncodedFile(const std::string& inputFile) {
     }
 
     file.close();
-
 }
 
 // Helper to write the dictionary and encoded column to a file
@@ -156,6 +155,40 @@ std::vector<size_t> DictionaryCodec::SearchByPrefix(const std::string& prefix) c
 // Query by prefix without SIMD
 std::vector<size_t> DictionaryCodec::QueryByPrefix(const std::string& prefix) const {
     return SearchByPrefix(prefix);
+}
+
+// SIMD-assisted prefix search
+std::vector<size_t> DictionaryCodec::SIMDQueryByPrefix(const std::string& prefix) const {
+    std::vector<size_t> results;
+    size_t prefixLen = prefix.size();
+
+    // Lock reading mutex
+    std::shared_lock lock(dictionaryMutex_);
+
+    // Load the prefix into SIMD registers
+    const char* prefixData = prefix.data();
+    __m256i prefixVec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(prefixData));
+
+    for (const auto& [key, code] : dictionary_) {
+        // Perform SIMD prefix comparison
+        if (key.size() >= prefixLen) {
+            const char* keyData = key.data();
+            __m256i keyVec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(keyData));
+
+            // Compare the SIMD register data for the prefix length
+            __m256i cmpResult = _mm256_cmpeq_epi8(prefixVec, keyVec);
+            int mask = _mm256_movemask_epi8(cmpResult);
+
+            // Check if the prefix matches (first `prefixLen` bytes must be equal)
+            if ((mask & ((1 << prefixLen) - 1)) == ((1 << prefixLen) - 1)) {
+                auto it = keyIndeces_.find(code);
+                if (it != keyIndeces_.end()) {
+                    results.insert(results.end(), it->second.begin(), it->second.end());
+                }
+            }
+        }
+    }
+    return results;
 }
 
 // Baseline column search (without dictionary encoding) for performance comparison
