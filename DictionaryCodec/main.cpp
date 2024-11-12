@@ -98,6 +98,46 @@ int main(int argc, char* argv[]) {
         std::cout << "BaselinePrefixSearch execution time: " << baselineDuration.count() << " seconds" << std::endl;
     }
 
+
+    else if (strcmp(argv[1], "query_prefix_SIMD") == 0) {
+        // Create the DictionaryCodec instance
+        DictionaryCodec dict;
+
+        // Load the encoded file
+        dict.LoadEncodedFile("src/Output.txt");
+
+        // Get the maximum index from the data size
+        size_t maxIndex = dict.GetDataSize();
+
+        // Setup random number generator
+        std::random_device rd;
+        std::uniform_int_distribution<size_t> dist(0, maxIndex - 1);
+
+        // Timing the QueryItem operation
+        auto startQuery = std::chrono::high_resolution_clock::now();
+
+        for (int i = 0; i < 10; i++) {
+            size_t ind = dist(rd);  // Random index
+            std::vector<size_t> queryResults = dict.QueryByPrefix(dict.GetData(ind));
+        }
+
+        auto endQuery = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> queryDuration = endQuery - startQuery;
+        std::cout << "QueryByPrefix execution time: " << queryDuration.count() << " seconds" << std::endl;
+
+        // Timing the BaselineSearch operation
+        auto startSIMD = std::chrono::high_resolution_clock::now();
+
+        for (int i = 0; i < 10; i++) {
+            size_t ind = dist(rd);  // Random index
+            std::vector<size_t> SIMDqueryResults = dict.SIMDQueryByPrefix(dict.GetData(ind));
+        }
+
+        auto endSIMD = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> SIMD_Duration = endSIMD - startSIMD;
+        std::cout << "SIMDQueryByPrefix execution time: " << SIMD_Duration.count() << " seconds" << std::endl;
+    }
+
     else {
         std::cout << "Error: please refer to README.md for correct usage." << std::endl;
     }
