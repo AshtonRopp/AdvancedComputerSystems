@@ -1,12 +1,10 @@
 // Codec.cpp
 #include "Codec.h"
 #include <fstream>
-#include <sstream>
-#include <algorithm>
 #include <iostream>
+#include <cstring>
+#include <immintrin.h>
 #include <thread>
-#include <immintrin.h>  // For SIMD
-#include <future>
 
 DictionaryCodec::DictionaryCodec() {}
 
@@ -38,7 +36,7 @@ void DictionaryCodec::LoadEncodedFile(const std::string& inputFile) {
     dataColumn_ = std::make_unique<std::string[]>(dataSize_);
 
     while (file >> keyVal) {
-        keyIndeces_[keyVal].push_back(ind);
+        encodedColumn_.push_back(keyVal);
         file >> dataStr;
         dictionary_[dataStr] = keyVal;
         dataColumn_[ind] = dataStr;
@@ -47,6 +45,7 @@ void DictionaryCodec::LoadEncodedFile(const std::string& inputFile) {
     }
 
     file.close();
+    std::cout << "Finished loading file" << std::endl;
 }
 
 // Helper to write the dictionary and encoded column to a file
@@ -118,17 +117,70 @@ bool DictionaryCodec::EncodeColumnFile(const std::string& inputFile, const std::
 
 // Query: Check if a data item exists in the encoded column, return indices if found
 std::vector<size_t> DictionaryCodec::QueryItem(const std::string& dataItem) {
-    std::vector<size_t> indices;
+    std::vector<size_t> results;
 
     std::shared_lock lock(dictionaryMutex_);
 
     auto it = dictionary_.find(dataItem);
-    if (it == dictionary_.end()) return indices;
+    if (it == dictionary_.end()) {
+        return results;
+    }
 
-    auto it2 = keyIndeces_.find(it->second);
-    if (it2 == keyIndeces_.end()) return indices;
+    size_t maxI = encodedColumn_.size();
+    size_t key = it->second;
+    for (size_t i = 0; i < maxI; i++) {
+        if (encodedColumn_[i] == key) {
+            results.push_back(i);
+        }
+    }
+    return results;
+}
 
-    return keyIndeces_[dictionary_[dataItem]];
+std::vector<size_t> DictionaryCodec::SIMDQueryItem(const std::string& dataItem) {
+    std::vector<size_t> results;
+
+    std::shared_lock lock(dictionaryMutex_);
+
+    // Find the dictionary entry for `dataItem`
+    auto it = dictionary_.find(dataItem);
+    if (it == dictionary_.end()) {
+        return results;
+    }
+
+    size_t maxI = encodedColumn_.size();
+    size_t key = it->second;
+
+    // SIMD register for the key (assuming size_t is 64-bit)
+    __m256i keyVec = _mm256_set1_epi64x(static_cast<long long>(key));
+
+    // Process 4 elements at a time with AVX2
+    size_t i = 0;
+    for (; i + 3 < maxI; i += 4) {
+        // Load 4 elements from encodedColumn_ into a SIMD register
+        __m256i columnVec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&encodedColumn_[i]));
+
+        // Compare each element in the chunk to `keyVec`
+        __m256i cmpResult = _mm256_cmpeq_epi64(columnVec, keyVec);
+
+        // Get a mask of matching elements
+        int mask = _mm256_movemask_epi8(cmpResult);
+
+        // For each matching bit in the mask, add the index to results
+        for (int j = 0; j < 4; ++j) {
+            if ((mask >> (j * 8)) & 0xFF) {  // Each 64-bit match uses 8 bits in the mask
+                results.push_back(i + j);
+            }
+        }
+    }
+
+    // Handle remaining elements (if any) in a scalar loop
+    for (; i < maxI; ++i) {
+        if (encodedColumn_[i] == key) {
+            results.push_back(i);
+        }
+    }
+
+    return results;
 }
 
 // Dictionary-assisted prefix search
@@ -142,10 +194,11 @@ std::vector<size_t> DictionaryCodec::SearchByPrefix(const std::string& prefix) c
     for (const auto& [key, code] : dictionary_) {
         if (key.compare(0, prefixLen, prefix) == 0) {
 
-            auto it = keyIndeces_.find(code);
-            if (it != keyIndeces_.end()) {
-                for (size_t i = 0; i < it->second.size(); i++)
-                    results.push_back(it->second[i]);
+            size_t maxI = encodedColumn_.size();
+            for (size_t i = 0; i < maxI; i++) {
+                if (encodedColumn_[i] == code) {
+                    results.push_back(i);
+                }
             }
         }
     }
@@ -165,25 +218,52 @@ std::vector<size_t> DictionaryCodec::SIMDQueryByPrefix(const std::string& prefix
     // Lock reading mutex
     std::shared_lock lock(dictionaryMutex_);
 
-    // Load the prefix into SIMD registers
-    const char* prefixData = prefix.data();
-    __m256i prefixVec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(prefixData));
+    // Prepare SIMD register for prefix (up to 32 characters for AVX2)
+    char paddedPrefix[32] = {0};  // Zero-padding for shorter prefixes
+    std::memcpy(paddedPrefix, prefix.data(), prefixLen);
+    __m256i prefixVec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(paddedPrefix));
 
     for (const auto& [key, code] : dictionary_) {
-        // Perform SIMD prefix comparison
         if (key.size() >= prefixLen) {
-            const char* keyData = key.data();
-            __m256i keyVec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(keyData));
+            // Load the first 32 bytes of the key
+            __m256i keyVec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(key.data()));
 
-            // Compare the SIMD register data for the prefix length
+            // Compare prefix with the beginning of the key
             __m256i cmpResult = _mm256_cmpeq_epi8(prefixVec, keyVec);
             int mask = _mm256_movemask_epi8(cmpResult);
 
-            // Check if the prefix matches (first `prefixLen` bytes must be equal)
+            // Check if the first `prefixLen` bytes match
             if ((mask & ((1 << prefixLen) - 1)) == ((1 << prefixLen) - 1)) {
-                auto it = keyIndeces_.find(code);
-                if (it != keyIndeces_.end()) {
-                    results.insert(results.end(), it->second.begin(), it->second.end());
+                size_t maxI = encodedColumn_.size();
+
+                // Prepare SIMD register for code comparison
+                __m256i codeVec = _mm256_set1_epi64x(static_cast<long long>(code));
+
+                // Process encodedColumn_ in chunks of 4 (for 64-bit integers)
+                size_t i = 0;
+                for (; i + 3 < maxI; i += 4) {
+                    // Load 4 elements from encodedColumn_ into a SIMD register
+                    __m256i columnVec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&encodedColumn_[i]));
+
+                    // Compare each element in the chunk to `codeVec`
+                    __m256i cmpResultCode = _mm256_cmpeq_epi64(columnVec, codeVec);
+
+                    // Get a mask of matching elements
+                    int maskCode = _mm256_movemask_epi8(cmpResultCode);
+
+                    // For each matching bit in the mask, add the index to results
+                    for (int j = 0; j < 4; ++j) {
+                        if ((maskCode >> (j * 8)) & 0xFF) {  // Each 64-bit match uses 8 bits in the mask
+                            results.push_back(i + j);
+                        }
+                    }
+                }
+
+                // Handle remaining elements (if any) in a scalar loop
+                for (; i < maxI; ++i) {
+                    if (encodedColumn_[i] == code) {
+                        results.push_back(i);
+                    }
                 }
             }
         }
@@ -211,7 +291,7 @@ std::vector<size_t> DictionaryCodec::BaselinePrefixSearch(const std::string& pre
 
     size_t len = GetDataSize();
     for (size_t i = 0; i < len; ++i) {
-        if (dataColumn_[i].compare(0, prefixLen, prefix)) {
+        if (dataColumn_[i].compare(0, prefixLen, prefix) == 0) {
             indices.push_back(i);
         }
     }

@@ -7,8 +7,6 @@
 #include <vector>
 #include <mutex>
 #include <shared_mutex>
-#include <immintrin.h>  // For SIMD instructions
-#include <thread>
 #include <memory>
 
 class DictionaryCodec {
@@ -21,6 +19,9 @@ public:
 
     // Query: Check if a data item exists in the encoded column, and return indices if it does
     std::vector<size_t> QueryItem(const std::string& dataItem);
+
+    // SIMD Query: Check if a data item exists in the encoded column, and return indices if it does
+    std::vector<size_t> SIMDQueryItem(const std::string& dataItem);
 
     // Query with Prefix: Search for items matching a prefix, returning unique items and their indices
     std::vector<size_t> QueryByPrefix(const std::string& prefix) const;
@@ -46,7 +47,6 @@ public:
 private:
     // Dictionary and encoded data storage
     std::unordered_map<std::string, size_t> dictionary_;          // Maps data items to unique integer codes
-    std::unordered_map<size_t, std::vector<size_t>> keyIndeces_;  // Maps keys to indeces
     std::unique_ptr<std::string[]> dataColumn_;                   // Unencoded data
     std::vector<size_t> encodedColumn_;                           // Encoded column data as integers (keys)
     mutable std::shared_mutex dictionaryMutex_;                   // Mutex for thread-safe access to dictionary
