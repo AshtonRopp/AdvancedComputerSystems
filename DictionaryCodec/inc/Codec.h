@@ -17,6 +17,9 @@ public:
     // Encoding: Perform dictionary encoding on a column file and generate an encoded output
     bool EncodeColumnFile(const std::string& inputFile, const std::string& outputFile);
 
+    // Test encoding speed based on number of threads and output graph
+    void TestEncodingSpeed(const std::string& inputFile);
+
     // Query: Check if a data item exists in the encoded column, and return indices if it does
     std::vector<size_t> QueryItem(const std::string& dataItem);
 
@@ -53,7 +56,7 @@ private:
     size_t dataSize_;
 
     // Helper function to populate the dictionary using multiple threads
-    void BuildDictionary(const std::vector<std::string>& columnData);
+    void BuildDictionary(const std::vector<std::string>& columnData, unsigned int numThreads = 8);
 
     // Helper function to perform search for prefix matching in encoded data
     std::vector<size_t> SearchByPrefix(const std::string& prefix) const;

@@ -150,7 +150,12 @@ int main(int argc, char* argv[]) {
 
     // Prefix query tests demo
     else if (strcmp(argv[1], "encoding_speed") == 0) {
+        // Create the DictionaryCodec instance
+        DictionaryCodec dict;
 
+        // Load the encoded file
+        dict.TestEncodingSpeed("src/Column.txt");
+        
     }
 
     else {
