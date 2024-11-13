@@ -5,6 +5,8 @@
 #include <cstring>
 #include <immintrin.h>
 #include <thread>
+#include <chrono>
+#include <cstdlib>
 
 DictionaryCodec::DictionaryCodec() {}
 
@@ -66,7 +68,7 @@ bool DictionaryCodec::WriteEncodedColumnFile(const std::string& outputFile, cons
 }
 
 // Multi-threaded dictionary builder
-void DictionaryCodec::BuildDictionary(const std::vector<std::string>& columnData) {
+void DictionaryCodec::BuildDictionary(const std::vector<std::string>& columnData, unsigned int numThreads) {
     std::cout << "Building dictionary." << std::endl;
 
     std::mutex localMutex;
@@ -86,7 +88,6 @@ void DictionaryCodec::BuildDictionary(const std::vector<std::string>& columnData
         }
     };
 
-    size_t numThreads = std::thread::hardware_concurrency();
     size_t chunkSize = columnData.size() / numThreads;
     std::vector<std::thread> threads;
 
@@ -113,6 +114,48 @@ bool DictionaryCodec::EncodeColumnFile(const std::string& inputFile, const std::
     }
 
     return WriteEncodedColumnFile(outputFile, columnData);
+}
+
+// Test encoding speed based on number of threads and output graph
+void DictionaryCodec::TestEncodingSpeed(const std::string& inputFile) {
+    auto columnData = LoadColumnFile(inputFile);
+
+    size_t numThreads = std::thread::hardware_concurrency();
+    std::cout << "Max number of threads: " << numThreads << std::endl;
+    
+    std::vector<size_t> x_data;          // To store the number of threads
+    std::vector<double> y_data;          // To store average time durations
+    int numRuns = 10;
+
+    for (size_t t = 1; t < numThreads; ++t) {
+        double totalTime = 0.0;
+
+        for (int i = 0; i < numRuns; ++i) {
+            auto start = std::chrono::high_resolution_clock::now();
+            BuildDictionary(columnData, t);
+            auto end = std::chrono::high_resolution_clock::now();
+            dictionary_.clear();
+
+            // Calculate the duration in milliseconds
+            std::chrono::duration<double, std::milli> duration = end - start;
+            totalTime += duration.count();
+        }
+
+        double averageTime = totalTime / numRuns;
+        x_data.push_back(t);
+        y_data.push_back(averageTime);
+    }
+
+    // Save data to a file for gnuplot
+    std::ofstream dataFile("timing_data.dat");
+    for (size_t i = 0; i < x_data.size(); ++i) {
+        dataFile << x_data[i] << " " << y_data[i] << "\n";
+    }
+    dataFile.close();
+
+    std::cout << "Timing data saved to timing_data.dat for gnuplot.\n";
+    // Execute the gnuplot script
+    system("gnuplot -persist src/plot.gp");
 }
 
 // Query: Check if a data item exists in the encoded column, return indices if found
