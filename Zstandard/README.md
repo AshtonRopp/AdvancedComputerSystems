@@ -49,3 +49,11 @@ An in-depth explanation of the algorithm can be found [here](https://github.com/
 ## Experiments
 - Trained vs non-trained
 - Comparison to other algorithms
+- Dictionary benchmark?
+- stream options
+- threads
+
+# Resources:
+https://fuchsia.googlesource.com/third_party/zstd/+/refs/tags/v1.3.7/programs/README.md
+https://raw.githack.com/facebook/zstd/release/doc/zstd_manual.html
+https://github.com/facebook/zstd/blob/dev/programs/zstd.1.md
