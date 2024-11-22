@@ -6,3 +6,4 @@
 *.csv
 *.txt
 *.o
+Zstandard/test_data/
