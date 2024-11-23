@@ -54,9 +54,9 @@ wikitext_dir = "ml_data/wikitext2_raw.txt"
 dataSets = [cifar_dir, fashion_dir, imdb_dir, wikitext_dir]
 dataSetNames = ["CIFAR-10", "Fashion MNIST", "IMDB Reviews", "WikiText2"]
 
-num_tests = 1
+num_tests = 3
 start_i = 1
-end_i = 19
+end_i = 12
 
 start = "-b" + str(start_i)
 end = "-e" + str(end_i)
@@ -92,8 +92,8 @@ if __name__ == "__main__":
     for i, compFactors in enumerate(all_compFactors):
         plt.plot(x_range, compFactors, label=dataSetNames[i])
     plt.title("Compression Factors")
-    plt.xlabel("Block Size")
-    plt.ylabel("Compression Level")
+    plt.xlabel("Compression Level")
+    plt.ylabel("Compression Ratio")
     plt.legend()
     plt.grid(True)
     plt.savefig("compression_factors.png")

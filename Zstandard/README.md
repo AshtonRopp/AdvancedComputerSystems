@@ -46,6 +46,24 @@ During my explanation, I omitted many symbols and specifiers for reader clarity.
 
 An in-depth explanation of the algorithm can be found [here](https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md#fse).
 
+## Dataset Preparation Script
+
+This script uses the Hugging Face `datasets` library to download and process several machine learning datasets for various NLP and computer vision tasks.
+
+### Data Sets
+- IMDB Dataset: A collection of movie reviews designed for sentiment analysis tasks.
+- WikiText-2 Dataset: A collection of Wikipedia articles frequently used for language modeling.
+- CIFAR-10 Dataset: A dataset of 60,000 32x32 color images categorized into 10 classes, commonly used for image classification.
+- Fashion-MNIST Dataset: A dataset of 28x28 grayscale images of clothing items, used for image classification tasks.
+
+### Execution:
+```
+python dataset_preparation.py
+```
+
+## Testing Results
+
+
 ## Experiments
 - Trained vs non-trained
 - Comparison to other algorithms
@@ -53,7 +71,7 @@ An in-depth explanation of the algorithm can be found [here](https://github.com/
 - stream options
 - threads
 
-# Resources:
+## Resources:
 https://fuchsia.googlesource.com/third_party/zstd/+/refs/tags/v1.3.7/programs/README.md
 https://raw.githack.com/facebook/zstd/release/doc/zstd_manual.html
 https://github.com/facebook/zstd/blob/dev/programs/zstd.1.md
