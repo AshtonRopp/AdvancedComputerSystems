@@ -1,7 +1,7 @@
 ## Zstandard Compression Testing
 
 ## Background Research
-The following section will summarize my research into the ZStandard (zstd) algorithm. For more thorough documentation, refer to the project's compression format guide found [here](https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md).
+The following section will summarize my research into the Zstandard (zstd) algorithm. For more thorough documentation, refer to the project's compression format guide found [here](https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md).
 
 ### Frames
 zstd compresses data into what is referred to as "frames". The format of these is shown below, taken from the Zstandard GitHub page.
@@ -56,22 +56,75 @@ This script uses the Hugging Face `datasets` library to download and process sev
 - CIFAR-10 Dataset: A dataset of 60,000 32x32 color images categorized into 10 classes, commonly used for image classification.
 - Fashion-MNIST Dataset: A dataset of 28x28 grayscale images of clothing items, used for image classification tasks.
 
-### Execution:
+### Execution
 ```
 python dataset_preparation.py
 ```
 
-## Testing Results
+## Basic Benchmarking Comparison
+For reference, I compared zstd to two other compression algorithms on the above data sets. The results are shown below. zstd dominated the other two algorithms in every category. I tested across various compression levels, for which a higher value encourages higher compression at the cost of speed.
+
+### Compression Factor
+![zstd Compression Factors](images/compression_factors.png)
+![gzip Compression Factors](images/gzip_compression_factors.png)
+![lz4 Compression Factors](images/lz4_compression_factors.png)
+
+### Compression Speed
+![Zstd Compression Speed](images/compression_speed.png)
+![gzip Compression Speed](images/gzip_compression_speed.png)
+![lz4 Compression Speed](images/lz4_compression_speed.png)
+
+### Decompression Speed
+![Zstd Decompression Speed](images/decompression_speed.png)
+![gzip Decompression Speed](images/gzip_decompression_speed.png)
+![lz4 Decompression Speed](images/lz4_decompression_speed.png)
+
+You can generate these plots by running the below commands.
+
+```
+python zstd_benchmark.py
+python gzip_benchmark.py
+python lz4_benchmark.py
+```
+
+## Dictionary Training
+Another feature of zstd is that it allows you to "train" the algorithm by creating a dictionary for a specific type of data. Small, similar pieces of data can exploit this feature for higher compression ratios. This can be extremely useful for AI/ML models which use many small input files/data during training. To illustrate this, I wrote code to download the ag_news text data set from Hugging Face and then ran the training algorithm on it. This code can be ran as shown below.
+
+### Experiment 1 - Wikipedia Data Set
+```
+python dictionaryTesting.py
+```
+
+Output (Number of training samples = 10000):
+```
+Original size: 15966 bytes
+Dictionary-based compressed size: 5464 bytes
+Standard zstd compressed size: 6498 bytes
+```
+
+Output (Number of training samples = 10000):
+```
+Original size: 15966 bytes
+Dictionary-based compressed size: 5464 bytes
+Standard zstd compressed size: 6498 bytes
+```
 
 
-## Experiments
-- Trained vs non-trained
-- Comparison to other algorithms
-- Dictionary benchmark?
-- stream options
-- threads
+### Experiment 2
+
+### Takeaways
+- Pro: Dictionary training provides a higher compression rate
+- Pro: More compatible data increases pros and mitigates cons
+- Con: Utilizing dictionary training slightly increases latency
+- Con: Dictionary costs additional time to make
 
 ## Resources:
-https://fuchsia.googlesource.com/third_party/zstd/+/refs/tags/v1.3.7/programs/README.md
-https://raw.githack.com/facebook/zstd/release/doc/zstd_manual.html
-https://github.com/facebook/zstd/blob/dev/programs/zstd.1.md
+[zstd GitHub](https://github.com/facebook/zstd)
+[zstd CLI Guide](https://github.com/facebook/zstd/blob/dev/programs/zstd.1.md)
+[zstd Manual](https://raw.githack.com/facebook/zstd/release/doc/zstd_manual.html)
+
+
+## Key Components:
+- Dictionary Training
+- Compression Algorithm
+- CLI Interface
