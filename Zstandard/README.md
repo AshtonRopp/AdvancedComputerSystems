@@ -1,5 +1,37 @@
 ## Zstandard Compression Testing
 
+## Table of Contents
+- [Zstandard Compression Testing](#zstandard-compression-testing)
+- [Table of Contents](#table-of-contents)
+- [Project Info](#project-info)
+- [Background Research](#background-research)
+  - [Frames](#frames)
+  - [Window\_Size](#window_size)
+  - [Blocks](#blocks)
+  - [Compression/Decompression](#compressiondecompression)
+  - [Finite State Entropy Encoding (FSE)](#finite-state-entropy-encoding-fse)
+- [Dataset Preparation Script](#dataset-preparation-script)
+  - [Data Sets](#data-sets)
+  - [Execution](#execution)
+- [Basic Benchmarking Comparison](#basic-benchmarking-comparison)
+  - [Compression Factor](#compression-factor)
+  - [Compression Speed](#compression-speed)
+  - [Decompression Speed](#decompression-speed)
+- [Dictionary Training](#dictionary-training)
+  - [Experiment](#experiment)
+  - [Takeaways](#takeaways)
+- [Resources](#resources)
+
+## Project Info
+This page is the coding portion of my final project of this course. I have chosen to research the Zstandard compression algorithm, as I will be working on this topic starting next semester for my master's project. Over that semester, I will be designing memory hardware that is optimized for Zstandard.
+
+The other half of this assignment is a presentation. The presentation will discuss the following topics in further detail.
+
+- Zstandard Algorithm Implementation
+- Dictionary Training Implementation
+- Zstandard Use Cases
+- CLI Interface vs. Library Functionality
+
 ## Background Research
 The following section will summarize my research into the Zstandard (zstd) algorithm. For more thorough documentation, refer to the project's compression format guide found [here](https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md).
 
@@ -88,43 +120,59 @@ python lz4_benchmark.py
 ```
 
 ## Dictionary Training
-Another feature of zstd is that it allows you to "train" the algorithm by creating a dictionary for a specific type of data. Small, similar pieces of data can exploit this feature for higher compression ratios. This can be extremely useful for AI/ML models which use many small input files/data during training. To illustrate this, I wrote code to download the ag_news text data set from Hugging Face and then ran the training algorithm on it. This code can be ran as shown below.
+Another feature of zstd is that it allows you to "train" the algorithm by creating a dictionary for a specific type of data. Small, similar pieces of data can exploit this feature for higher compression ratios. This can be extremely useful for AI/ML models which use many small input files/data during training. To illustrate this, I wrote code to download the MNIST numbers images data set from Hugging Face and then ran the training algorithm on it. This data consists of small images of single digits. As a result, it has a small size and is highly repetitive, making it a prime use case for the dictionary training. This code can be ran as shown below.
 
-### Experiment 1 - Wikipedia Data Set
+### Experiment
 ```
 python dictionaryTesting.py
 ```
 
-Output (Number of training samples = 10000):
+This code runs the algorithm over various training data sizes. The results are shown below. We see that without the dictionary training, zstd's attempts to compress the files actually lead to a higher storage usage. However, if we use an optimal sample size, we can reduce storage down to 1/6 its original value. It is also important to note that training time increases exponentially with regards to training sample size, making it even more important to choose an optimal and small training sample size.
+
 ```
-Original size: 15966 bytes
-Dictionary-based compressed size: 5464 bytes
-Standard zstd compressed size: 6498 bytes
+Downloading dataset...
+Finished downloading.
+
+Calculating standard compression metrics...
+
+Standard Compression Metrics:
+Original size: 313 bytes
+Standard compressed size: 327 bytes
+Time taken for standard compression: 0.0241 seconds
+Time taken for standard decompression: 0.0178 seconds
+
+Processing 100 samples...
+Dictionary trained in 0.9595 seconds.
+
+Processing 200 samples...
+Dictionary trained in 1.8782 seconds.
+
+Processing 500 samples...
+Dictionary trained in 5.4713 seconds.
+
+Processing 1000 samples...
+Dictionary trained in 10.0070 seconds.
+
+Processing 1500 samples...
+Dictionary trained in 14.2405 seconds.
+
+Processing 2000 samples...
+Dictionary trained in 18.3947 seconds.
 ```
 
-Output (Number of training samples = 10000):
-```
-Original size: 15966 bytes
-Dictionary-based compressed size: 5464 bytes
-Standard zstd compressed size: 6498 bytes
-```
+The script also outputs a graph, which is shown below. This graph shows that while we may see a speed increase by increasing the size of our dictionary, those gains will come at a cost to our compression ratio. This speed increase is also not guaranteed, as we see some variation along the graph. However, it should be noted that these speed results are still slower than using default zstd without dictionary training. We can confirm this by comparing the default output speeds printed above to their appropriate graphs below.
 
-
-### Experiment 2
+![Dictionary Testing Results](images/dictionaryMetrics.png)
 
 ### Takeaways
 - Pro: Dictionary training provides a higher compression rate
-- Pro: More compatible data increases pros and mitigates cons
+- Pro: Extremely small, repetitive data sets work even better
+- Pro: More training data increases speed (up to a point)
+- Con: More training data could decrease compression ratio
 - Con: Utilizing dictionary training slightly increases latency
-- Con: Dictionary costs additional time to make
+- Con: Dictionary costs additional overhead time to make
 
-## Resources:
-[zstd GitHub](https://github.com/facebook/zstd)
-[zstd CLI Guide](https://github.com/facebook/zstd/blob/dev/programs/zstd.1.md)
-[zstd Manual](https://raw.githack.com/facebook/zstd/release/doc/zstd_manual.html)
-
-
-## Key Components:
-- Dictionary Training
-- Compression Algorithm
-- CLI Interface
+## Resources
+- [zstd GitHub](https://github.com/facebook/zstd)
+- [zstd CLI Guide](https://github.com/facebook/zstd/blob/dev/programs/zstd.1.md)
+- [zstd Manual](https://raw.githack.com/facebook/zstd/release/doc/zstd_manual.html)
