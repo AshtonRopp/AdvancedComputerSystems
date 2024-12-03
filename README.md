@@ -32,5 +32,13 @@ This project tests SSD performance, optimizing data access, and evaluating queue
 - Automated experiment orchestration with Perl scripts.
 - Collected and visualized performance data using FIO and Python.
 
+### 4. Dictionary Codec
+This project implements a dictionary codec for compression and memory latency reduction.
+
+**Highlights:**
+- Reduced memory latency by 80% using dictionary encoding
+- Deployed SIMD instructions to promote effective data processing
+- Utilized multithreading for search/scan operations
+
 ## Getting Started
 Each project includes detailed setup instructions in its respective folder. Follow those to run the experiments and explore the results.
