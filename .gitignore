@@ -6,3 +6,6 @@
 *.csv
 *.txt
 *.o
+Zstandard/test_data/
+Zstandard/ml_data/
+Zstandard/zstd_training_data/
