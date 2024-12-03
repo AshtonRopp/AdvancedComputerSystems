@@ -36,9 +36,9 @@ This project tests SSD performance, optimizing data access, and evaluating queue
 This project implements a dictionary codec for compression and memory latency reduction.
 
 **Highlights:**
-- Reduced memory latency by 80% using dictionary encoding
-- Deployed SIMD instructions to promote effective data processing
-- Utilized multithreading for search/scan operations
+- Reduced memory latency by 80% using dictionary encoding.
+- Deployed SIMD instructions to promote effective data processing.
+- Utilized multithreading for search/scan operations.
 
 ## Getting Started
 Each project includes detailed setup instructions in its respective folder. Follow those to run the experiments and explore the results.
