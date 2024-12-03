@@ -1,6 +1,14 @@
 
 # Cache Profiling
 
+## Project Highlights
+- **Analyzed Cache Hierarchy:** Explored the cache structure using `hwloc`, `getconf`, and CPU-Z on Linux and Windows.
+- **Measured Latency Across Cache Levels:** Investigated read/write latency at L1, L2, L3 caches, and main memory.
+- **Assessed Memory Bandwidth:** Tested memory bandwidth for different data sizes and read/write intensities to identify optimal access patterns.
+- **Evaluated Multithreading Impacts on Cache Performance:** Showed cache performance limits using multithreading and analyzed throughput vs. latency tradeoffs.
+- **Investigated Cache Miss Impact:** Quantified the slowdown effects of L1, L2, and L3 cache misses on execution speed.
+- **Examined TLB Misses and Execution Speed:** Visualized the impact of TLB misses on program execution using `perf` and Python graphing.
+
 ## Overview
 This page discusses my research into the memory system of my laptop. It reveals optimal programming practices, hardware architecture, and system performance. All experiments described here can be replicated by sourcing the `script.sh` file or running the individual commands outlined in the script.
 
